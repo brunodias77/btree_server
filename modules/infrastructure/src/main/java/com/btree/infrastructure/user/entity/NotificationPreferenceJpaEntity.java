@@ -88,7 +88,7 @@ public static NotificationPreferenceJpaEntity from(
 public NotificationPreference toAggregate() {
     return NotificationPreference.with(
             NotificationPreferenceId.from(this.id),
-            UserId.from(this.user),
+            UserId.from(this.user.getId()),
             this.emailEnabled,
             this.pushEnabled,
             this.smsEnabled,

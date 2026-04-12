@@ -216,6 +216,17 @@
 					</execution>
 				</executions>
 			</plugin>
+			<!-- Force UTC timezone in the test JVM so Testcontainers does not embed  -->
+			<!-- the macOS legacy alias "US/Pacific" into the PostgreSQL JDBC URL,     -->
+			<!-- which PostgreSQL 15+ rejects with "invalid value for parameter        -->
+			<!-- TimeZone". UTC is a universally accepted identifier.                  -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<argLine>-Duser.timezone=UTC</argLine>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 
