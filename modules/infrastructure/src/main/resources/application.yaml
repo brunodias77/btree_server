@@ -2,46 +2,57 @@ spring:
   application:
     name: btree
 
-datasource:
-  url: jdbc:postgresql://localhost:5439/btree_server
-  username: postgres
-  password: password
-  driver-class-name: org.postgresql.Driver
-  hikari:
-    pool-name: btree-pool
-    maximum-pool-size: 20
-    minimum-idle: 5
-    connection-timeout: 30000
-    idle-timeout: 600000
-    max-lifetime: 1800000
+  datasource:
+    url: jdbc:postgresql://localhost:5439/btree_server
+    username: postgres
+    password: password
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: btree-pool
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
 
-jpa:
-  hibernate:
-    ddl-auto: validate
-  properties:
+  jpa:
     hibernate:
-      dialect: org.hibernate.dialect.PostgreSQLDialect
-      default_schema: shared
-      format_sql: false
-      show_sql: false
-      jdbc:
-        time_zone: UTC
-  open-in-view: false
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: shared
+        format_sql: false
+        show_sql: false
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
 
-flyway:
-  enabled: true
-  locations: classpath:db/migration
-  baseline-on-migrate: true
-  baseline-version: 0
-  schemas: shared, users, catalog, cart, orders, payments, coupons
-  out-of-order: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+    schemas: shared, users, catalog, cart, orders, payments, coupons
+    out-of-order: false
 
-jackson:
-  serialization:
-    write-dates-as-timestamps: false
-  deserialization:
-    fail-on-unknown-properties: false
-  time-zone: UTC
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+    time-zone: UTC
+
+  web:
+    cors:
+      allowed-origins: "http://localhost:3000"
+      allowed-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allowed-headers: "Content-Type,Authorization,X-Requested-With"
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 minio:
   url: http://localhost:9000
@@ -76,4 +87,3 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     enabled: true
-
