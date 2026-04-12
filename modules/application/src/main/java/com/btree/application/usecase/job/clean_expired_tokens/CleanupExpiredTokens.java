@@ -1,4 +1,4 @@
-package com.btree.application.usecase.user.job;
+package com.btree.application.usecase.job.clean_expired_tokens;
 
 /**
  * Comando de entrada para UC-13 — CleanupExpiredTokens.
