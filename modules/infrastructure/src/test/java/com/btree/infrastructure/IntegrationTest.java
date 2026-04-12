@@ -12,11 +12,15 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 /**
  * Base unificada para todos os Testes de Integração do módulo Infrastructure.
  *
- * <p>Qualquer classe de teste que estenda esta base subirá automaticamente:
+ * <p>
+ * Qualquer classe de teste que estenda esta base subirá automaticamente:
  * <ul>
- *     <li>O Contexto do Spring Boot restrito a este módulo (sem precisar levantar a API web real).</li>
- *     <li>Um Container Docker do PostgreSQL temporário e volátil via Testcontainers.</li>
- *     <li>O Flyway para criar e versionar todo o banco automaticamente dentro desse container.</li>
+ * <li>O Contexto do Spring Boot restrito a este módulo (sem precisar levantar a
+ * API web real).</li>
+ * <li>Um Container Docker do PostgreSQL temporário e volátil via
+ * Testcontainers.</li>
+ * <li>O Flyway para criar e versionar todo o banco automaticamente dentro desse
+ * container.</li>
  * </ul>
  */
 @ActiveProfiles("test-integration")
@@ -26,7 +30,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 public abstract class IntegrationTest {
 
     @Container
-    protected static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
+    protected static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine")
             .withDatabaseName("btree_test")
             .withUsername("test_user")
             .withPassword("test_pass");
