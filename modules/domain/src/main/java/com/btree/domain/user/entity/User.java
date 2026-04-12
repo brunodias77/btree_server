@@ -9,20 +9,15 @@ import com.btree.shared.validation.Notification;
 import com.btree.shared.validation.ValidationHandler;
 
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.Set;
+
 
 /**
- * A Raiz de Agregação (Aggregate Root) do subdomínio de Usuários.
+ * Aggregate Root — maps to {@code users.users} table.
  *
- * <p>Esta classe representa a fronteira de transação e consistência para a entidade User.
- * Alterações de estado em propriedades do Usuário, seu Perfil ou Preferências de Notificação
- * devem sempre passar por comportamentos expostos aqui.
+ * <p>Owns: Profile, Addresses, Sessions, Tokens, SocialLogins,
+ * LoginHistory, Notifications, NotificationPreference.
  */
 public class User extends AggregateRoot<UserId> {
-
-    // ── State (Properties) ───────────────────────────────────
-
 
     private String username;
     private String email;
@@ -40,9 +35,7 @@ public class User extends AggregateRoot<UserId> {
     private Instant updatedAt;
     private Profile profile;
     private NotificationPreference notificationPreference;
-    private final Set<String> roles = new HashSet<>();
-
-    // ── Constructors ─────────────────────────────────────────
+    private final java.util.Set<String> roles = new java.util.HashSet<>();
 
     private User(
             final UserId id,
@@ -79,14 +72,15 @@ public class User extends AggregateRoot<UserId> {
         this.updatedAt = updatedAt;
     }
 
-    // ── Factories ────────────────────────────────────────────
-
     /**
-     * Factory Principal: Usada para criar um NOVO usuário do zero no sistema.
-     * Além de instanciar a classe e suas composições filhas (Profile e NotificationPreference),
-     * este método aciona a validação estrita e engatilha o Evento de Domínio de criação.
+     * Factory: creates a new User (register).
      */
-    public static User create(final String username, final String email, final String passwordHash, final Notification notification){
+    public static User create(
+            final String username,
+            final String email,
+            final String passwordHash,
+            final Notification notification
+    ) {
         final var now = Instant.now();
         final var user = new User(
                 UserId.unique(),
@@ -109,20 +103,59 @@ public class User extends AggregateRoot<UserId> {
 
         user.profile = Profile.create(user.getId());
         user.notificationPreference = NotificationPreference.create(user.getId());
+
         user.validate(notification);
-        if(notification.hasError()){
-            throw DomainException.with(notification.getErrors());
+        if (notification.hasError()) {
+            throw com.btree.shared.domain.DomainException.with(notification.getErrors());
         }
 
-        user.registerEvent(new UserCreatedEvent(user.getId().getValue().toString(), user.getUsername(), user.getEmail()));
+        user.registerEvent(new UserCreatedEvent(
+                user.getId().getValue().toString(),
+                user.getUsername(),
+                user.getEmail()
+        ));
+
         return user;
     }
 
     /**
-     * Factory de Reconstituição: Usada pelos Repositórios / Gateways (Infraestrutura)
-     * para reconstruir em memória um User que já existe no Banco de Dados.
-     * Não gera eventos e não aciona o validador.
+     * Factory: creates a new User from a Social Provider (no password).
      */
+    public static User createFromSocial(
+            final String username,
+            final String email,
+            final Notification notification
+    ) {
+        final var now = Instant.now();
+        final var user = new User(
+                UserId.unique(),
+                username,
+                email,
+                true, // email verified by social provider
+                null, // no password hash
+                null,
+                false,
+                false,
+                null,
+                false,
+                null,
+                0,
+                true,
+                now,
+                now,
+                0
+        );
+
+        user.profile = Profile.create(user.getId());
+        user.notificationPreference = NotificationPreference.create(user.getId());
+
+        user.validate(notification);
+        if (notification.hasError()) {
+            throw com.btree.shared.domain.DomainException.with(notification.getErrors());
+        }
+
+        return user;
+    }
     public static User with(
             final UserId id,
             final String username,
@@ -156,84 +189,139 @@ public class User extends AggregateRoot<UserId> {
 
     // ── Domain Behaviors ─────────────────────────────────────
 
+    public void verifyEmail() {
+        this.emailVerified = true;
+        this.updatedAt = Instant.now();
+        incrementVersion();
+        registerEvent(new com.btree.domain.user.events.UserEmailVerifiedEvent(getId().getValue().toString()));
+    }
+
+    public void lockAccount(final Instant expiresAt) {
+        this.accountLocked = true;
+        this.lockExpiresAt = expiresAt;
+        this.updatedAt = Instant.now();
+        incrementVersion();
+        registerEvent(new com.btree.domain.user.events.UserAccountLockedEvent(getId().getValue().toString(), expiresAt));
+    }
+
+    public void unlockAccount() {
+        this.accountLocked = false;
+        this.lockExpiresAt = null;
+        this.accessFailedCount = 0;
+        this.updatedAt = Instant.now();
+        incrementVersion();
+        registerEvent(new com.btree.domain.user.events.UserAccountUnlockedEvent(getId().getValue().toString()));
+    }
+
+    public void disable() {
+        this.enabled = false;
+        this.updatedAt = Instant.now();
+        incrementVersion();
+    }
+
+    public void enable() {
+        this.enabled = true;
+        this.updatedAt = Instant.now();
+        incrementVersion();
+    }
+
+    public void enableTwoFactor(final String secret) {
+        this.twoFactorEnabled = true;
+        this.twoFactorSecret = secret;
+        this.updatedAt = Instant.now();
+        incrementVersion();
+        registerEvent(new com.btree.domain.user.events.UserTwoFactorEnabledEvent(getId().getValue().toString()));
+    }
+
+    public void disableTwoFactor() {
+        this.twoFactorEnabled = false;
+        this.twoFactorSecret = null;
+        this.updatedAt = Instant.now();
+        incrementVersion();
+        registerEvent(new com.btree.domain.user.events.UserTwoFactorDisabledEvent(getId().getValue().toString()));
+    }
+
+    public void incrementAccessFailed() {
+        this.accessFailedCount++;
+        this.updatedAt = Instant.now();
+        incrementVersion();
+    }
+
+    public void resetAccessFailed() {
+        this.accessFailedCount = 0;
+        this.updatedAt = Instant.now();
+        incrementVersion();
+    }
+
+    public void changePassword(final String newPasswordHash) {
+        this.passwordHash = newPasswordHash;
+        this.updatedAt = Instant.now();
+        incrementVersion();
+        registerEvent(new com.btree.domain.user.events.UserPasswordChangedEvent(getId().getValue().toString()));
+    }
+
+    public void changeEmail(final String newEmail) {
+        this.email = newEmail;
+        this.emailVerified = false;
+        this.updatedAt = Instant.now();
+        incrementVersion();
+        registerEvent(new com.btree.domain.user.events.UserEmailChangedEvent(getId().getValue().toString(), newEmail));
+    }
+
+    public void changePhoneNumber(final String newPhoneNumber) {
+        this.phoneNumber = newPhoneNumber;
+        this.phoneNumberVerified = false;
+        this.updatedAt = Instant.now();
+        incrementVersion();
+    }
+
+    public void verifyPhoneNumber() {
+        this.phoneNumberVerified = true;
+        this.updatedAt = Instant.now();
+        incrementVersion();
+    }
+
+    public void requestPasswordReset(final String rawToken, final Instant expiresAt) {
+        registerEvent(new com.btree.domain.user.events.PasswordResetRequestedEvent(
+                getId().getValue().toString(),
+                this.email,
+                rawToken,
+                expiresAt
+        ));
+    }
+
+    // ── Validation ───────────────────────────────────────────
+
     @Override
-    public void validate(ValidationHandler handler) {
+    public void validate(final ValidationHandler handler) {
         new UserValidator(this, handler).validate();
     }
 
-    public void addRole(String role){
-        if(role != null && !role.isBlank()){
+    // ── Getters ──────────────────────────────────────────────
+
+    public String getUsername() { return username; }
+    public String getEmail() { return email; }
+    public boolean isEmailVerified() { return emailVerified; }
+    public String getPasswordHash() { return passwordHash; }
+    public String getPhoneNumber() { return phoneNumber; }
+    public boolean isPhoneNumberVerified() { return phoneNumberVerified; }
+    public boolean isTwoFactorEnabled() { return twoFactorEnabled; }
+    public String getTwoFactorSecret() { return twoFactorSecret; }
+    public boolean isAccountLocked() { return accountLocked; }
+    public Instant getLockExpiresAt() { return lockExpiresAt; }
+    public int getAccessFailedCount() { return accessFailedCount; }
+    public boolean isEnabled() { return enabled; }
+    public Instant getCreatedAt() { return createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public Profile getProfile() { return profile; }
+    public NotificationPreference getNotificationPreference() { return notificationPreference; }
+    public java.util.Set<String> getRoles() { return java.util.Collections.unmodifiableSet(roles); }
+
+    public void addRole(String role) {
+        if (role != null && !role.isBlank()) {
             this.roles.add(role);
         }
     }
-
-    // ── Getters (Read-Only Exposure) ─────────────────────────
-
-    public String getUsername() {
-        return username;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public boolean isEmailVerified() {
-        return emailVerified;
-    }
-
-    public String getPasswordHash() {
-        return passwordHash;
-    }
-
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-
-    public boolean isPhoneNumberVerified() {
-        return phoneNumberVerified;
-    }
-
-    public boolean isTwoFactorEnabled() {
-        return twoFactorEnabled;
-    }
-
-    public String getTwoFactorSecret() {
-        return twoFactorSecret;
-    }
-
-    public boolean isAccountLocked() {
-        return accountLocked;
-    }
-
-    public Instant getLockExpiresAt() {
-        return lockExpiresAt;
-    }
-
-    public int getAccessFailedCount() {
-        return accessFailedCount;
-    }
-
-    public boolean isEnabled() {
-        return enabled;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public Profile getProfile() {
-        return profile;
-    }
-
-    public NotificationPreference getNotificationPreference() {
-        return notificationPreference;
-    }
-
-    public Set<String> getRoles() {
-        return roles;
-    }
 }
+
+
