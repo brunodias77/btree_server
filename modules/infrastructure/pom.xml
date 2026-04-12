@@ -8,7 +8,7 @@
 		<version>4.0.5</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.btree</groupId>
+	<groupId>com.btree.infrastructure</groupId>
 	<artifactId>infrastructure</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name/>
@@ -30,6 +30,16 @@
 		<java.version>25</java.version>
 	</properties>
 	<dependencies>
+		<dependency>
+			<groupId>com.btree.shared</groupId>
+			<artifactId>shared</artifactId>
+			<version>1.0-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>com.btree.domain</groupId>
+			<artifactId>domain</artifactId>
+			<version>1.0-SNAPSHOT</version>
+		</dependency>
 		<!-- ============================================== -->
 		<!-- Spring Boot Starters -->
 		<!-- ============================================== -->
@@ -162,6 +172,7 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
+					<classifier>exec</classifier>
 					<excludes>
 						<exclude>
 							<groupId>org.projectlombok</groupId>
@@ -205,6 +216,17 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+			<!-- Force UTC timezone in the test JVM so Testcontainers does not embed  -->
+			<!-- the macOS legacy alias "US/Pacific" into the PostgreSQL JDBC URL,     -->
+			<!-- which PostgreSQL 15+ rejects with "invalid value for parameter        -->
+			<!-- TimeZone". UTC is a universally accepted identifier.                  -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<argLine>-Duser.timezone=UTC</argLine>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
