@@ -1,6 +1,6 @@
 package com.btree.domain.user.entity;
 
-import com.btree.domain.user.event.UserCreatedEvent;
+import com.btree.domain.user.event.*;
 import com.btree.domain.user.identifier.UserId;
 import com.btree.domain.user.validator.UserValidator;
 import com.btree.shared.domain.AggregateRoot;
@@ -193,7 +193,7 @@ public class User extends AggregateRoot<UserId> {
         this.emailVerified = true;
         this.updatedAt = Instant.now();
         incrementVersion();
-        registerEvent(new com.btree.domain.user.events.UserEmailVerifiedEvent(getId().getValue().toString()));
+        registerEvent(new UserEmailVerifiedEvent(getId().getValue().toString()));
     }
 
     public void lockAccount(final Instant expiresAt) {
@@ -201,7 +201,7 @@ public class User extends AggregateRoot<UserId> {
         this.lockExpiresAt = expiresAt;
         this.updatedAt = Instant.now();
         incrementVersion();
-        registerEvent(new com.btree.domain.user.events.UserAccountLockedEvent(getId().getValue().toString(), expiresAt));
+        registerEvent(new UserAccountLockedEvent(getId().getValue().toString(), expiresAt));
     }
 
     public void unlockAccount() {
@@ -210,7 +210,7 @@ public class User extends AggregateRoot<UserId> {
         this.accessFailedCount = 0;
         this.updatedAt = Instant.now();
         incrementVersion();
-        registerEvent(new com.btree.domain.user.events.UserAccountUnlockedEvent(getId().getValue().toString()));
+        registerEvent(new UserAccountUnlockedEvent(getId().getValue().toString()));
     }
 
     public void disable() {
@@ -230,7 +230,7 @@ public class User extends AggregateRoot<UserId> {
         this.twoFactorSecret = secret;
         this.updatedAt = Instant.now();
         incrementVersion();
-        registerEvent(new com.btree.domain.user.events.UserTwoFactorEnabledEvent(getId().getValue().toString()));
+        registerEvent(new UserTwoFactorEnabledEvent(getId().getValue().toString()));
     }
 
     public void disableTwoFactor() {
@@ -238,7 +238,7 @@ public class User extends AggregateRoot<UserId> {
         this.twoFactorSecret = null;
         this.updatedAt = Instant.now();
         incrementVersion();
-        registerEvent(new com.btree.domain.user.events.UserTwoFactorDisabledEvent(getId().getValue().toString()));
+        registerEvent(new UserTwoFactorDisabledEvent(getId().getValue().toString()));
     }
 
     public void incrementAccessFailed() {
@@ -257,7 +257,7 @@ public class User extends AggregateRoot<UserId> {
         this.passwordHash = newPasswordHash;
         this.updatedAt = Instant.now();
         incrementVersion();
-        registerEvent(new com.btree.domain.user.events.UserPasswordChangedEvent(getId().getValue().toString()));
+        registerEvent(new UserPasswordChangedEvent(getId().getValue().toString()));
     }
 
     public void changeEmail(final String newEmail) {
@@ -265,7 +265,7 @@ public class User extends AggregateRoot<UserId> {
         this.emailVerified = false;
         this.updatedAt = Instant.now();
         incrementVersion();
-        registerEvent(new com.btree.domain.user.events.UserEmailChangedEvent(getId().getValue().toString(), newEmail));
+        registerEvent(new UserEmailChangedEvent(getId().getValue().toString(), newEmail));
     }
 
     public void changePhoneNumber(final String newPhoneNumber) {
@@ -282,7 +282,7 @@ public class User extends AggregateRoot<UserId> {
     }
 
     public void requestPasswordReset(final String rawToken, final Instant expiresAt) {
-        registerEvent(new com.btree.domain.user.events.PasswordResetRequestedEvent(
+        registerEvent(new PasswordResetRequestedEvent(
                 getId().getValue().toString(),
                 this.email,
                 rawToken,
