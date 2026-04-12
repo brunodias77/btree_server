@@ -3,8 +3,15 @@ package com.btree.api.config;
 import com.btree.application.usecase.job.clean_expired_tokens.CleanupExpiredTokensJob;
 import com.btree.application.usecase.job.process_domain_event.ProcessDomainEventsJob;
 import com.btree.application.usecase.job.retry_failed_event.RetryFailedEventsJob;
+import com.btree.application.usecase.user.auth.register.RegisterUserUseCase;
+import com.btree.domain.user.gateway.UserGateway;
 import com.btree.domain.user.gateway.UserTokenGateway;
+import com.btree.shared.contract.EmailService;
+import com.btree.shared.contract.PasswordHasher;
+import com.btree.shared.contract.TokenHasher;
 import com.btree.shared.contract.TransactionManager;
+import com.btree.shared.event.DomainEventPublisher;
+import com.btree.shared.event.IntegrationEventPublisher;
 import com.btree.shared.gateway.OutboxEventGateway;
 import com.btree.shared.gateway.ProcessedEventGateway;
 import org.springframework.context.annotation.Bean;
@@ -29,23 +36,23 @@ public class UseCaseConfig {
 
     // ── Users ─────────────────────────────────────────────────────────────────
 
-//    @Bean
-//    public RegisterUserUseCase registerUserUseCase(
-//            final UserGateway userGateway,
-//            final UserTokenGateway userTokenGateway,
-//            final PasswordHasher passwordHasher,
-//            final TokenHasher tokenHasher,
-//            final EmailService emailService,
-//            final DomainEventPublisher eventPublisher,
-//            final IntegrationEventPublisher integrationEventPublisher,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new RegisterUserUseCase(
-//                userGateway, userTokenGateway, passwordHasher,
-//                tokenHasher, emailService, eventPublisher,
-//                integrationEventPublisher, transactionManager
-//        );
-//    }
+    @Bean
+    public RegisterUserUseCase registerUserUseCase(
+            final UserGateway userGateway,
+            final UserTokenGateway userTokenGateway,
+            final PasswordHasher passwordHasher,
+            final TokenHasher tokenHasher,
+            final EmailService emailService,
+            final DomainEventPublisher eventPublisher,
+            final IntegrationEventPublisher integrationEventPublisher,
+            final TransactionManager transactionManager
+    ) {
+        return new RegisterUserUseCase(
+                userGateway, userTokenGateway, passwordHasher,
+                tokenHasher, emailService, eventPublisher,
+                integrationEventPublisher, transactionManager
+        );
+    }
 //
 //    @Bean
 //    public VerifyEmailUseCase verifyEmailUseCase(
