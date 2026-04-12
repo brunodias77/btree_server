@@ -1,8 +1,16 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+  error:
+    include-message: never
+    include-binding-errors: never
+
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/btree
+    url: jdbc:postgresql://localhost:5439/btree_server
     username: postgres
-    password: postgres
+    password: password
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -29,3 +37,19 @@ security:
     salt: deadbeefcafebabe
   google:
     client-id: dev-google-client-id.apps.googleusercontent.com
+
+logging:
+  level:
+    root: INFO
+    com.btree: DEBUG
+    org.springframework.security: INFO
+    org.flywaydb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
