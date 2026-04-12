@@ -1,4 +1,8 @@
 package com.btree.api.dto.request.user;
 
-public record VerifyEmailRequest() {
-}
+import jakarta.validation.constraints.NotBlank;
+
+public record VerifyEmailRequest(
+        @NotBlank(message = "token é obrigatório")
+        String token
+) {}

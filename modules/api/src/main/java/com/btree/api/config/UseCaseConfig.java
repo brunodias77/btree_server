@@ -5,6 +5,7 @@ import com.btree.application.usecase.job.process_domain_event.ProcessDomainEvent
 import com.btree.application.usecase.job.retry_failed_event.RetryFailedEventsJob;
 import com.btree.application.usecase.user.auth.login.LoginUserUseCase;
 import com.btree.application.usecase.user.auth.register.RegisterUserUseCase;
+import com.btree.application.usecase.user.auth.verify_email.VerifyEmailUseCase;
 import com.btree.domain.user.gateway.LoginHistoryGateway;
 import com.btree.domain.user.gateway.SessionGateway;
 import com.btree.domain.user.gateway.UserGateway;
@@ -81,16 +82,18 @@ public class UseCaseConfig {
                 jwtConfig.getRefreshTokenExpirationMs()
         );
     }
-//
-//    @Bean
-//    public VerifyEmailUseCase verifyEmailUseCase(
-//            final UserTokenGateway userTokenGateway,
-//            final UserGateway userGateway,
-//            final TokenHasher tokenHasher,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new VerifyEmailUseCase(userTokenGateway, userGateway, tokenHasher, transactionManager);
-//    }
+
+
+
+    @Bean
+    public VerifyEmailUseCase verifyEmailUseCase(
+            final UserTokenGateway userTokenGateway,
+            final UserGateway userGateway,
+            final TokenHasher tokenHasher,
+            final TransactionManager transactionManager
+    ) {
+        return new VerifyEmailUseCase(userTokenGateway, userGateway, tokenHasher, transactionManager);
+    }
 //
 //    @Bean
 //    public AuthenticateUserUseCase authenticateUserUseCase(
