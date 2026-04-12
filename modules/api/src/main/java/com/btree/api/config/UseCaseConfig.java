@@ -49,8 +49,7 @@ public class UseCaseConfig {
     ) {
         return new RegisterUserUseCase(
                 userGateway, userTokenGateway, passwordHasher,
-                tokenHasher, emailService, eventPublisher,
-                integrationEventPublisher, transactionManager
+                tokenHasher, eventPublisher, integrationEventPublisher, transactionManager, emailService
         );
     }
 //
