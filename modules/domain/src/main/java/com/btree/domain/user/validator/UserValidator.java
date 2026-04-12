@@ -61,24 +61,57 @@ public class UserValidator extends Validator {
         }
     }
 
-    private void checkPasswordHash(){
-        final var pass = this.user.getPasswordHash();
+    private void checkPasswordHash() {
+        validatePassword(this.user.getPasswordHash(), this.validationHandler());
+    }
+
+    /**
+     * Método reutilizável para validação de senha
+     */
+    public static void validatePassword(
+            final String pass,
+            final ValidationHandler handler
+    ) {
         if (pass == null || pass.isBlank()) {
-            this.validationHandler().append(new Error("'password' não pode ser nulo ou vazio"));
+            handler.append(new Error("'password' não pode ser nulo ou vazio"));
             return;
         }
+
         if (pass.length() < PASSWORD_MIN_LENGTH) {
-            this.validationHandler().append(new Error("'password' deve ter no mínimo " + PASSWORD_MIN_LENGTH + " caracteres"));
+            handler.append(new Error("'password' deve ter no mínimo " + PASSWORD_MIN_LENGTH + " caracteres"));
         }
+
         if (!PASSWORD_UPPERCASE.matcher(pass).find()) {
-            this.validationHandler().append(new Error("'password' deve possuir ao menos uma letra maiúscula"));
+            handler.append(new Error("'password' deve possuir ao menos uma letra maiúscula"));
         }
+
         if (!PASSWORD_LOWERCASE.matcher(pass).find()) {
-            this.validationHandler().append(new Error("'password' deve possuir ao menos uma letra minúscula"));
+            handler.append(new Error("'password' deve possuir ao menos uma letra minúscula"));
         }
+
         if (!PASSWORD_DIGIT.matcher(pass).find()) {
-            this.validationHandler().append(new Error("'password' deve possuir ao menos um dígito numérico"));
+            handler.append(new Error("'password' deve possuir ao menos um dígito numérico"));
         }
     }
+
+//    private void checkPasswordHash(){
+//        final var pass = this.user.getPasswordHash();
+//        if (pass == null || pass.isBlank()) {
+//            this.validationHandler().append(new Error("'password' não pode ser nulo ou vazio"));
+//            return;
+//        }
+//        if (pass.length() < PASSWORD_MIN_LENGTH) {
+//            this.validationHandler().append(new Error("'password' deve ter no mínimo " + PASSWORD_MIN_LENGTH + " caracteres"));
+//        }
+//        if (!PASSWORD_UPPERCASE.matcher(pass).find()) {
+//            this.validationHandler().append(new Error("'password' deve possuir ao menos uma letra maiúscula"));
+//        }
+//        if (!PASSWORD_LOWERCASE.matcher(pass).find()) {
+//            this.validationHandler().append(new Error("'password' deve possuir ao menos uma letra minúscula"));
+//        }
+//        if (!PASSWORD_DIGIT.matcher(pass).find()) {
+//            this.validationHandler().append(new Error("'password' deve possuir ao menos um dígito numérico"));
+//        }
+//    }
 
 }
