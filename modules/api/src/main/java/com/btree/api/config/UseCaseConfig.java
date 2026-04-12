@@ -1,6 +1,12 @@
 package com.btree.api.config;
 
-
+import com.btree.application.usecase.job.clean_expired_tokens.CleanupExpiredTokensJob;
+import com.btree.application.usecase.job.process_domain_event.ProcessDomainEventsJob;
+import com.btree.application.usecase.job.retry_failed_event.RetryFailedEventsJob;
+import com.btree.domain.user.gateway.UserTokenGateway;
+import com.btree.shared.contract.TransactionManager;
+import com.btree.shared.gateway.OutboxEventGateway;
+import com.btree.shared.gateway.ProcessedEventGateway;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -559,6 +565,31 @@ public class UseCaseConfig {
     // ── Coupons ───────────────────────────────────────────────────────────────
     // TODO: ValidateCouponUseCase, ApplyCouponToCartUseCase...
 
-    // ── Shared ────────────────────────────────────────────────────────────────
-    // TODO: ProcessDomainEventsUseCase, RetryFailedEventsUseCase...
+    // ── Shared / Jobs ─────────────────────────────────────────────────────────
+
+    @Bean
+    public CleanupExpiredTokensJob cleanupExpiredTokensJob(
+            final UserTokenGateway userTokenGateway,
+            final TransactionManager transactionManager
+    ) {
+        return new CleanupExpiredTokensJob(userTokenGateway, transactionManager);
+    }
+
+    @Bean
+    public ProcessDomainEventsJob processDomainEventsJob(
+            final OutboxEventGateway outboxEventGateway,
+            final ProcessedEventGateway processedEventGateway,
+            final TransactionManager transactionManager
+    ) {
+        return new ProcessDomainEventsJob(outboxEventGateway, processedEventGateway, transactionManager);
+    }
+
+    @Bean
+    public RetryFailedEventsJob retryFailedEventsJob(
+            final OutboxEventGateway outboxEventGateway,
+            final ProcessedEventGateway processedEventGateway,
+            final TransactionManager transactionManager
+    ) {
+        return new RetryFailedEventsJob(outboxEventGateway, processedEventGateway, transactionManager);
+    }
 }
