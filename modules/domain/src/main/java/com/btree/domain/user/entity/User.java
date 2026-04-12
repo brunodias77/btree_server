@@ -12,7 +12,17 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * A Raiz de Agregação (Aggregate Root) do subdomínio de Usuários.
+ *
+ * <p>Esta classe representa a fronteira de transação e consistência para a entidade User.
+ * Alterações de estado em propriedades do Usuário, seu Perfil ou Preferências de Notificação
+ * devem sempre passar por comportamentos expostos aqui.
+ */
 public class User extends AggregateRoot<UserId> {
+
+    // ── State (Properties) ───────────────────────────────────
+
 
     private String username;
     private String email;
@@ -31,6 +41,8 @@ public class User extends AggregateRoot<UserId> {
     private Profile profile;
     private NotificationPreference notificationPreference;
     private final Set<String> roles = new HashSet<>();
+
+    // ── Constructors ─────────────────────────────────────────
 
     private User(
             final UserId id,
@@ -67,6 +79,13 @@ public class User extends AggregateRoot<UserId> {
         this.updatedAt = updatedAt;
     }
 
+    // ── Factories ────────────────────────────────────────────
+
+    /**
+     * Factory Principal: Usada para criar um NOVO usuário do zero no sistema.
+     * Além de instanciar a classe e suas composições filhas (Profile e NotificationPreference),
+     * este método aciona a validação estrita e engatilha o Evento de Domínio de criação.
+     */
     public static User create(final String username, final String email, final String passwordHash, final Notification notification){
         final var now = Instant.now();
         final var user = new User(
@@ -99,10 +118,56 @@ public class User extends AggregateRoot<UserId> {
         return user;
     }
 
+    /**
+     * Factory de Reconstituição: Usada pelos Repositórios / Gateways (Infraestrutura)
+     * para reconstruir em memória um User que já existe no Banco de Dados.
+     * Não gera eventos e não aciona o validador.
+     */
+    public static User with(
+            final UserId id,
+            final String username,
+            final String email,
+            final boolean emailVerified,
+            final String passwordHash,
+            final String phoneNumber,
+            final boolean phoneNumberVerified,
+            final boolean twoFactorEnabled,
+            final String twoFactorSecret,
+            final boolean accountLocked,
+            final Instant lockExpiresAt,
+            final int accessFailedCount,
+            final boolean enabled,
+            final Instant createdAt,
+            final Instant updatedAt,
+            final int version,
+            final Profile profile,
+            final NotificationPreference notificationPreference
+    ) {
+        final var user = new User(
+                id, username, email, emailVerified, passwordHash,
+                phoneNumber, phoneNumberVerified, twoFactorEnabled,
+                twoFactorSecret, accountLocked, lockExpiresAt, accessFailedCount,
+                enabled, createdAt, updatedAt, version
+        );
+        user.profile = profile;
+        user.notificationPreference = notificationPreference;
+        return user;
+    }
+
+    // ── Domain Behaviors ─────────────────────────────────────
+
     @Override
     public void validate(ValidationHandler handler) {
         new UserValidator(this, handler).validate();
     }
+
+    public void addRole(String role){
+        if(role != null && !role.isBlank()){
+            this.roles.add(role);
+        }
+    }
+
+    // ── Getters (Read-Only Exposure) ─────────────────────────
 
     public String getUsername() {
         return username;
