@@ -99,15 +99,15 @@ public class LoginUserUseCase implements UseCase<LoginUserCommand, LoginUserOutp
             return Left(notification);
         }
 
-        if (user.isAccountLocked()){
-            // Auto-unlock se o prazo de bloqueio já expirou
-            if(user.getLockExpiresAt() != null && Instant.now().isAfter(user.getLockExpiresAt())){
+        if (user.isAccountLocked()) {
+            // Auto-unlock se o prazo de bloqueio já expirou.
+            if (user.getLockExpiresAt() != null && Instant.now().isAfter(user.getLockExpiresAt())) {
                 user.unlockAccount();
                 persistUserBestEffort(user);
+            } else {
+                notification.append(UserError.ACCOUNT_LOCKED);
+                return Left(notification);
             }
-        } else {
-            notification.append(UserError.ACCOUNT_LOCKED);
-            return Left(notification);
         }
 
         // 3. Verificar senha
