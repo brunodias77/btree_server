@@ -3,13 +3,14 @@ package com.btree.api.config;
 import com.btree.application.usecase.job.clean_expired_tokens.CleanupExpiredTokensJob;
 import com.btree.application.usecase.job.process_domain_event.ProcessDomainEventsJob;
 import com.btree.application.usecase.job.retry_failed_event.RetryFailedEventsJob;
+import com.btree.application.usecase.user.auth.login.LoginUserUseCase;
 import com.btree.application.usecase.user.auth.register.RegisterUserUseCase;
+import com.btree.domain.user.gateway.LoginHistoryGateway;
+import com.btree.domain.user.gateway.SessionGateway;
 import com.btree.domain.user.gateway.UserGateway;
 import com.btree.domain.user.gateway.UserTokenGateway;
-import com.btree.shared.contract.EmailService;
-import com.btree.shared.contract.PasswordHasher;
-import com.btree.shared.contract.TokenHasher;
-import com.btree.shared.contract.TransactionManager;
+import com.btree.infrastructure.config.JwtConfig;
+import com.btree.shared.contract.*;
 import com.btree.shared.event.DomainEventPublisher;
 import com.btree.shared.event.IntegrationEventPublisher;
 import com.btree.shared.gateway.OutboxEventGateway;
@@ -50,6 +51,34 @@ public class UseCaseConfig {
         return new RegisterUserUseCase(
                 userGateway, userTokenGateway, passwordHasher,
                 tokenHasher, eventPublisher, integrationEventPublisher, transactionManager, emailService
+        );
+    }
+
+    @Bean
+    public LoginUserUseCase loginUserUseCase(
+            final UserGateway userGateway,
+            final SessionGateway sessionGateway,
+            final UserTokenGateway userTokenGateway,
+            final LoginHistoryGateway loginHistoryGateway,
+            final PasswordHasher passwordHasher,
+            final TokenProvider tokenProvider,
+            final TokenHasher tokenHasher,
+            final TransactionManager transactionManager,
+            final DomainEventPublisher eventPublisher,
+            final JwtConfig jwtConfig
+    ){
+        return new LoginUserUseCase(
+                userGateway,
+                sessionGateway,
+                userTokenGateway,
+                loginHistoryGateway,
+                passwordHasher,
+                tokenProvider,
+                tokenHasher,
+                transactionManager,
+                eventPublisher,
+                jwtConfig.getAccessTokenExpirationMs(),
+                jwtConfig.getRefreshTokenExpirationMs()
         );
     }
 //

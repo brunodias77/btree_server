@@ -63,14 +63,14 @@ public class SecurityConfig {
      * devem ser listados aqui; devem ter seu próprio filtro dedicado.
      */
     private static final String[] PUBLIC_ROUTES = {
-            "/api/v1/auth/register",
-            "/api/v1/auth/login",
-            "/api/v1/auth/refresh",
-            "/api/v1/auth/verify-email",
-            "/api/v1/auth/logout",
-            "/api/v1/auth/password/forgot",
-            "/api/v1/auth/social/**",   // padrão wildcard para todos os provedores OAuth2
-            "/api/v1/auth/2fa/verify",
+            "/v1/auth/register",
+            "/v1/auth/login",
+            "/v1/auth/refresh",
+            "/v1/auth/verify-email",
+            "/v1/auth/logout",
+            "/v1/auth/password/forgot",
+            "/v1/auth/social/**",   // padrão wildcard para todos os provedores OAuth2
+            "/v1/auth/2fa/verify",
             "/actuator/health",     // health check sem auth para load balancers e orquestradores
             "/swagger-ui/**",       // UI do Swagger (HTML + JS + CSS)
             "/v3/api-docs/**"       // spec OpenAPI 3 em JSON/YAML
