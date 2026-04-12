@@ -7,6 +7,10 @@ import com.btree.shared.validation.ValidationHandler;
 
 import java.time.Instant;
 
+/**
+ * Entity — maps to {@code users.notification_preferences} table.
+ * One-to-one relationship with User (user_id UNIQUE).
+ */
 public class NotificationPreference extends Entity<NotificationPreferenceId> {
 
     private UserId userId;
@@ -55,8 +59,53 @@ public class NotificationPreference extends Entity<NotificationPreferenceId> {
         );
     }
 
-    @Override
-    public void validate(ValidationHandler handler) {
-
+    public static NotificationPreference with(
+            final NotificationPreferenceId id, final UserId userId,
+            final boolean emailEnabled, final boolean pushEnabled, final boolean smsEnabled,
+            final boolean orderUpdates, final boolean promotions, final boolean priceDrops,
+            final boolean backInStock, final boolean newsletter,
+            final Instant createdAt, final Instant updatedAt
+    ) {
+        return new NotificationPreference(
+                id, userId, emailEnabled, pushEnabled, smsEnabled,
+                orderUpdates, promotions, priceDrops, backInStock, newsletter,
+                createdAt, updatedAt
+        );
     }
+
+    public void update(
+            final boolean emailEnabled, final boolean pushEnabled, final boolean smsEnabled,
+            final boolean orderUpdates, final boolean promotions, final boolean priceDrops,
+            final boolean backInStock, final boolean newsletter
+    ) {
+        this.emailEnabled = emailEnabled;
+        this.pushEnabled = pushEnabled;
+        this.smsEnabled = smsEnabled;
+        this.orderUpdates = orderUpdates;
+        this.promotions = promotions;
+        this.priceDrops = priceDrops;
+        this.backInStock = backInStock;
+        this.newsletter = newsletter;
+        this.updatedAt = Instant.now();
+    }
+
+    @Override
+    public void validate(final ValidationHandler handler) {
+        // All fields are booleans with defaults — no invariants to break
+    }
+
+    // ── Getters ──────────────────────────────────────────────
+
+    public UserId getUserId() { return userId; }
+    public boolean isEmailEnabled() { return emailEnabled; }
+    public boolean isPushEnabled() { return pushEnabled; }
+    public boolean isSmsEnabled() { return smsEnabled; }
+    public boolean isOrderUpdates() { return orderUpdates; }
+    public boolean isPromotions() { return promotions; }
+    public boolean isPriceDrops() { return priceDrops; }
+    public boolean isBackInStock() { return backInStock; }
+    public boolean isNewsletter() { return newsletter; }
+    public Instant getCreatedAt() { return createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
 }
+
