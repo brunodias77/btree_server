@@ -5,46 +5,66 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Base unificada para todos os Testes de Integração do módulo Infrastructure.
+ * Classe base unificada para todos os testes de integração do módulo Infrastructure.
  *
- * <p>
- * Qualquer classe de teste que estenda esta base subirá automaticamente:
+ * <p>Qualquer classe de teste que estenda esta base terá automaticamente:
  * <ul>
- * <li>O Contexto do Spring Boot restrito a este módulo (sem precisar levantar a
- * API web real).</li>
- * <li>Um Container Docker do PostgreSQL temporário e volátil via
- * Testcontainers.</li>
- * <li>O Flyway para criar e versionar todo o banco automaticamente dentro desse
- * container.</li>
+ *   <li>O contexto do Spring Boot restrito a este módulo (sem levantar a API web real).</li>
+ *   <li>Um container Docker PostgreSQL compartilhado e reutilizável via
+ *       {@link PostgresTestContainer} (Singleton Pattern).</li>
+ *   <li>O Flyway executado uma única vez na primeira inicialização do contexto,
+ *       criando todos os schemas e tabelas necessários.</li>
  * </ul>
+ *
+ * <h3>Singleton Pattern — Por que não {@code @Testcontainers} + {@code @Container}?</h3>
+ * <p>A abordagem padrão com {@code @Container static} em classe abstrata cria um container
+ * <b>por classe de teste concreta</b>: 4 classes = 4 startups do PostgreSQL + 4 execuções
+ * do Flyway. O Singleton inicia o container <b>uma única vez</b> para toda a suite,
+ * reduzindo drasticamente o tempo de build.
+ *
+ * <h3>Isolamento entre testes</h3>
+ * <p>Como o banco é compartilhado, cada classe de teste deve limpar seus dados no
+ * {@code @BeforeEach} para garantir independência entre os cenários
+ * (ex.: {@code repository.deleteAll()}).
+ *
+ * <h3>Perfil de teste</h3>
+ * <p>O perfil {@code "test-integration"} deve desativar qualquer auto-configuração
+ * que precise de serviços externos (MinIO, e-mail, etc.) para que o contexto
+ * suba apenas com JPA + Flyway + Security.
  */
 @ActiveProfiles("test-integration")
 @SpringBootTest(classes = InfrastructureApplication.class)
-@Testcontainers
 @Tag("integrationTest")
 public abstract class IntegrationTest {
 
-    @Container
-    protected static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine")
-            .withDatabaseName("btree_test")
-            .withUsername("test_user")
-            .withPassword("test_pass");
-
+    /**
+     * Injeta as propriedades de conexão do container singleton no contexto do Spring.
+     *
+     * <p>O método é {@code static} pois o {@code @DynamicPropertySource} é processado
+     * <b>antes</b> da criação do {@code ApplicationContext}. Referenciar o singleton
+     * {@link PostgresTestContainer#INSTANCE} aqui garante que o container esteja
+     * iniciado no momento em que as propriedades são lidas, pois o bloco estático de
+     * {@link PostgresTestContainer} ja terá sido executado.
+     *
+     * <p>Tanto {@code spring.datasource.*} quanto {@code spring.flyway.*} são
+     * sobrescritos porque o {@link com.btree.infrastructure.config.FlywayConfig}
+     * injeta o {@code DataSource} manualmente — sem sobrescrever as propriedades do
+     * Flyway, ele tentaria usar o banco de produção configurado no {@code application.yaml}.
+     */
     @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        // Redireciona tudo que dependa do banco de dados (Spring JPA e Flyway) para
-        // acessar especificamente as credenciais da URL do Testcontainer recém criado.
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
+    static void configureProperties(final DynamicPropertyRegistry registry) {
+        final var pg = PostgresTestContainer.INSTANCE;
 
-        registry.add("spring.flyway.url", postgres::getJdbcUrl);
-        registry.add("spring.flyway.user", postgres::getUsername);
-        registry.add("spring.flyway.password", postgres::getPassword);
+        // Datasource: pool de conexões HikariCP → JPA / Hibernate
+        registry.add("spring.datasource.url",      pg::getJdbcUrl);
+        registry.add("spring.datasource.username", pg::getUsername);
+        registry.add("spring.datasource.password", pg::getPassword);
+
+        // Flyway: migrador de schema — usa credenciais idênticas ao datasource
+        registry.add("spring.flyway.url",      pg::getJdbcUrl);
+        registry.add("spring.flyway.user",     pg::getUsername);
+        registry.add("spring.flyway.password", pg::getPassword);
     }
 }
