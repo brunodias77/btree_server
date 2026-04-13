@@ -1,12 +1,16 @@
 package com.btree.api.controller.user;
 
 import com.btree.api.dto.request.user.LoginUserRequest;
+import com.btree.api.dto.request.user.RefreshTokenRequest;
 import com.btree.api.dto.request.user.RegisterUserRequest;
 import com.btree.api.dto.request.user.VerifyEmailRequest;
 import com.btree.api.dto.response.user.LoginUserResponse;
+import com.btree.api.dto.response.user.RefreshTokenResponse;
 import com.btree.api.dto.response.user.RegisterUserResponse;
 import com.btree.application.usecase.user.auth.login.LoginUserCommand;
 import com.btree.application.usecase.user.auth.login.LoginUserUseCase;
+import com.btree.application.usecase.user.auth.refresh.RefreshSessionCommand;
+import com.btree.application.usecase.user.auth.refresh.RefreshSessionUseCase;
 import com.btree.application.usecase.user.auth.register.RegisterUserCommand;
 import com.btree.application.usecase.user.auth.register.RegisterUserUseCase;
 import com.btree.application.usecase.user.auth.verify_email.VerifyEmailCommand;
@@ -31,11 +35,14 @@ public class AuthController {
     private final RegisterUserUseCase _registerUserUseCase;
     private final LoginUserUseCase _loginUserUseCase;
     private final VerifyEmailUseCase _verifyEmailUseCase;
+    private final RefreshSessionUseCase _refreshSessionUseCase;
 
-    public AuthController(RegisterUserUseCase _registerUserUseCase, LoginUserUseCase _loginUserUseCase, VerifyEmailUseCase _verifyEmailUseCase) {
+
+    public AuthController(RegisterUserUseCase _registerUserUseCase, LoginUserUseCase _loginUserUseCase, VerifyEmailUseCase _verifyEmailUseCase, RefreshSessionUseCase _refreshSessionUseCase) {
         this._registerUserUseCase = _registerUserUseCase;
         this._loginUserUseCase = _loginUserUseCase;
         this._verifyEmailUseCase = _verifyEmailUseCase;
+        this._refreshSessionUseCase = _refreshSessionUseCase;
     }
 
     @PostMapping("/register")
@@ -90,5 +97,28 @@ public class AuthController {
     public void verifyEmail(@Valid @RequestBody final VerifyEmailRequest request) {
         _verifyEmailUseCase.execute(new VerifyEmailCommand(request.token()))
                 .getOrElseThrow(n -> DomainException.with(n.getErrors()));
+    }
+
+    @PostMapping("/refresh")
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Renovar sessão", description = "Troca o refresh token por um novo par de tokens (token rotation)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Tokens renovados com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Dados de entrada inválidos"),
+            @ApiResponse(responseCode = "422", description = "Sessão inválida, revogada ou expirada")
+    })
+    public RefreshTokenResponse refresh(
+            @Valid @RequestBody final RefreshTokenRequest request,
+            final HttpServletRequest httpRequest
+    ) {
+        final var command = new RefreshSessionCommand(
+                request.refreshToken(),
+                httpRequest.getRemoteAddr(),
+                httpRequest.getHeader("User-Agent")
+        );
+        return RefreshTokenResponse.from(
+                _refreshSessionUseCase.execute(command)
+                        .getOrElseThrow(n -> DomainException.with(n.getErrors()))
+        );
     }
 }
