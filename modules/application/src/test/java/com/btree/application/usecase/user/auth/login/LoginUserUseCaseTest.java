@@ -14,8 +14,6 @@ import com.btree.domain.user.identifier.UserTokenId;
 import com.btree.shared.contract.PasswordHasher;
 import com.btree.shared.contract.TokenHasher;
 import com.btree.shared.contract.TokenProvider;
-import com.btree.shared.contract.TransactionManager;
-import com.btree.shared.domain.DomainEvent;
 import com.btree.shared.enums.TokenType;
 import com.btree.shared.event.DomainEventPublisher;
 import com.btree.shared.validation.Notification;
@@ -23,11 +21,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -418,29 +413,4 @@ class LoginUserUseCaseTest extends UseCaseTest {
         }
     }
 
-    private static final class FakeDomainEventPublisher implements DomainEventPublisher {
-        private final List<DomainEvent> publishedEvents = new ArrayList<>();
-
-        @Override
-        public void publish(final DomainEvent event) {
-            this.publishedEvents.add(event);
-        }
-
-        @Override
-        public void publishAll(final List<? extends DomainEvent> events) {
-            this.publishedEvents.addAll(events);
-        }
-    }
-
-    private static final class ImmediateTransactionManager implements TransactionManager {
-        @Override
-        public <T> T execute(final Supplier<T> action) {
-            return action.get();
-        }
-
-        @Override
-        public void executeVoid(final Runnable action) {
-            action.run();
-        }
-    }
 }

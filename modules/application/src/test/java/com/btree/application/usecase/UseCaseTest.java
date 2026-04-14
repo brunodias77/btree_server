@@ -1,12 +1,17 @@
 package com.btree.application.usecase;
 
+import com.btree.shared.contract.TransactionManager;
+import com.btree.shared.domain.DomainEvent;
 import com.btree.shared.domain.Identifier;
+import com.btree.shared.event.DomainEventPublisher;
 import com.btree.shared.validation.Notification;
 import org.junit.jupiter.api.Tag;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Tag("unitTest")
@@ -46,5 +51,33 @@ public abstract class UseCaseTest {
         return notification.firstError() != null
                 ? notification.firstError().message()
                 : null;
+    }
+
+    protected static final class ImmediateTransactionManager implements TransactionManager {
+        @Override
+        public <T> T execute(final Supplier<T> action) {
+            return action.get();
+        }
+
+        @Override
+        public void executeVoid(final Runnable action) {
+            action.run();
+        }
+    }
+
+    protected static final class FakeDomainEventPublisher implements DomainEventPublisher {
+        public int publishAllCalls;
+        public final List<DomainEvent> publishedEvents = new ArrayList<>();
+
+        @Override
+        public void publish(final DomainEvent event) {
+            this.publishedEvents.add(event);
+        }
+
+        @Override
+        public void publishAll(final List<? extends DomainEvent> events) {
+            this.publishAllCalls++;
+            this.publishedEvents.addAll(events);
+        }
     }
 }
