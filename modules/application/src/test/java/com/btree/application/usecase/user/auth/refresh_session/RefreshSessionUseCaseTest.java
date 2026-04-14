@@ -10,7 +10,6 @@ import com.btree.domain.user.identifier.UserId;
 import com.btree.domain.user.valueobject.DeviceInfo;
 import com.btree.shared.contract.TokenHasher;
 import com.btree.shared.contract.TokenProvider;
-import com.btree.shared.contract.TransactionManager;
 import com.btree.shared.validation.Notification;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,7 +17,6 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -280,15 +278,4 @@ class RefreshSessionUseCaseTest extends UseCaseTest {
         }
     }
 
-    private static final class ImmediateTransactionManager implements TransactionManager {
-        @Override
-        public <T> T execute(final Supplier<T> action) {
-            return action.get();
-        }
-
-        @Override
-        public void executeVoid(final Runnable action) {
-            action.run();
-        }
-    }
 }

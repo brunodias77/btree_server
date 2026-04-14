@@ -7,13 +7,11 @@ import com.btree.domain.user.identifier.SessionId;
 import com.btree.domain.user.identifier.UserId;
 import com.btree.domain.user.valueobject.DeviceInfo;
 import com.btree.shared.contract.TokenHasher;
-import com.btree.shared.contract.TransactionManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.Optional;
-import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -195,15 +193,4 @@ class LogoutUserUseCaseTest extends UseCaseTest {
         }
     }
 
-    private static final class ImmediateTransactionManager implements TransactionManager {
-        @Override
-        public <T> T execute(final Supplier<T> action) {
-            return action.get();
-        }
-
-        @Override
-        public void executeVoid(final Runnable action) {
-            action.run();
-        }
-    }
 }
