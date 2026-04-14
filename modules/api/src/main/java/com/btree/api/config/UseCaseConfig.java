@@ -3,8 +3,19 @@ package com.btree.api.config;
 import com.btree.application.usecase.job.clean_expired_tokens.CleanupExpiredTokensJob;
 import com.btree.application.usecase.job.process_domain_event.ProcessDomainEventsJob;
 import com.btree.application.usecase.job.retry_failed_event.RetryFailedEventsJob;
+import com.btree.application.usecase.user.auth.login.LoginUserUseCase;
+import com.btree.application.usecase.user.auth.logout.LogoutUserUseCase;
+import com.btree.application.usecase.user.auth.refresh.RefreshSessionUseCase;
+import com.btree.application.usecase.user.auth.register.RegisterUserUseCase;
+import com.btree.application.usecase.user.auth.verify_email.VerifyEmailUseCase;
+import com.btree.domain.user.gateway.LoginHistoryGateway;
+import com.btree.domain.user.gateway.SessionGateway;
+import com.btree.domain.user.gateway.UserGateway;
 import com.btree.domain.user.gateway.UserTokenGateway;
-import com.btree.shared.contract.TransactionManager;
+import com.btree.infrastructure.config.JwtConfig;
+import com.btree.shared.contract.*;
+import com.btree.shared.event.DomainEventPublisher;
+import com.btree.shared.event.IntegrationEventPublisher;
 import com.btree.shared.gateway.OutboxEventGateway;
 import com.btree.shared.gateway.ProcessedEventGateway;
 import org.springframework.context.annotation.Bean;
@@ -29,91 +40,92 @@ public class UseCaseConfig {
 
     // ── Users ─────────────────────────────────────────────────────────────────
 
-//    @Bean
-//    public RegisterUserUseCase registerUserUseCase(
-//            final UserGateway userGateway,
-//            final UserTokenGateway userTokenGateway,
-//            final PasswordHasher passwordHasher,
-//            final TokenHasher tokenHasher,
-//            final EmailService emailService,
-//            final DomainEventPublisher eventPublisher,
-//            final IntegrationEventPublisher integrationEventPublisher,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new RegisterUserUseCase(
-//                userGateway, userTokenGateway, passwordHasher,
-//                tokenHasher, emailService, eventPublisher,
-//                integrationEventPublisher, transactionManager
-//        );
-//    }
-//
-//    @Bean
-//    public VerifyEmailUseCase verifyEmailUseCase(
-//            final UserTokenGateway userTokenGateway,
-//            final UserGateway userGateway,
-//            final TokenHasher tokenHasher,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new VerifyEmailUseCase(userTokenGateway, userGateway, tokenHasher, transactionManager);
-//    }
-//
-//    @Bean
-//    public AuthenticateUserUseCase authenticateUserUseCase(
-//            final UserGateway userGateway,
-//            final SessionGateway sessionGateway,
-//            final UserTokenGateway userTokenGateway,
-//            final LoginHistoryGateway loginHistoryGateway,
-//            final PasswordHasher passwordHasher,
-//            final TokenProvider tokenProvider,
-//            final TokenHasher tokenHasher,
-//            final TransactionManager transactionManager,
-//            final DomainEventPublisher eventPublisher,
-//            final JwtConfig jwtConfig
-//    ) {
-//        return new AuthenticateUserUseCase(
-//                userGateway,
-//                sessionGateway,
-//                userTokenGateway,
-//                loginHistoryGateway,
-//                passwordHasher,
-//                tokenProvider,
-//                tokenHasher,
-//                transactionManager,
-//                eventPublisher,
-//                jwtConfig.getAccessTokenExpirationMs(),
-//                jwtConfig.getRefreshTokenExpirationMs()
-//        );
-//    }
-//
-//    @Bean
-//    public RefreshSessionUseCase refreshSessionUseCase(
-//            final SessionGateway sessionGateway,
-//            final UserGateway userGateway,
-//            final TokenProvider tokenProvider,
-//            final TokenHasher tokenHasher,
-//            final TransactionManager transactionManager,
-//            final JwtConfig jwtConfig
-//    ) {
-//        return new RefreshSessionUseCase(
-//                sessionGateway,
-//                userGateway,
-//                tokenProvider,
-//                tokenHasher,
-//                transactionManager,
-//                jwtConfig.getAccessTokenExpirationMs(),
-//                jwtConfig.getRefreshTokenExpirationMs()
-//        );
-//    }
-//
-//    @Bean
-//    public LogoutUserUseCase logoutUserUseCase(
-//            final SessionGateway sessionGateway,
-//            final TokenHasher tokenHasher,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new LogoutUserUseCase(sessionGateway, tokenHasher, transactionManager);
-//    }
-//
+    @Bean
+    public RegisterUserUseCase registerUserUseCase(
+            final UserGateway userGateway,
+            final UserTokenGateway userTokenGateway,
+            final PasswordHasher passwordHasher,
+            final TokenHasher tokenHasher,
+            final EmailService emailService,
+            final DomainEventPublisher eventPublisher,
+            final IntegrationEventPublisher integrationEventPublisher,
+            final TransactionManager transactionManager
+    ) {
+        return new RegisterUserUseCase(
+                userGateway, userTokenGateway, passwordHasher,
+                tokenHasher, eventPublisher, integrationEventPublisher, transactionManager, emailService
+        );
+    }
+
+    @Bean
+    public LoginUserUseCase loginUserUseCase(
+            final UserGateway userGateway,
+            final SessionGateway sessionGateway,
+            final UserTokenGateway userTokenGateway,
+            final LoginHistoryGateway loginHistoryGateway,
+            final PasswordHasher passwordHasher,
+            final TokenProvider tokenProvider,
+            final TokenHasher tokenHasher,
+            final TransactionManager transactionManager,
+            final DomainEventPublisher eventPublisher,
+            final JwtConfig jwtConfig
+    ){
+        return new LoginUserUseCase(
+                userGateway,
+                sessionGateway,
+                userTokenGateway,
+                loginHistoryGateway,
+                passwordHasher,
+                tokenProvider,
+                tokenHasher,
+                transactionManager,
+                eventPublisher,
+                jwtConfig.getAccessTokenExpirationMs(),
+                jwtConfig.getRefreshTokenExpirationMs()
+        );
+    }
+
+
+
+    @Bean
+    public VerifyEmailUseCase verifyEmailUseCase(
+            final UserTokenGateway userTokenGateway,
+            final UserGateway userGateway,
+            final TokenHasher tokenHasher,
+            final TransactionManager transactionManager
+    ) {
+        return new VerifyEmailUseCase(userTokenGateway, userGateway, tokenHasher, transactionManager);
+    }
+
+    @Bean
+    public RefreshSessionUseCase refreshSessionUseCase(
+            final SessionGateway sessionGateway,
+            final UserGateway userGateway,
+            final TokenProvider tokenProvider,
+            final TokenHasher tokenHasher,
+            final TransactionManager transactionManager,
+            final JwtConfig jwtConfig
+    ) {
+        return new RefreshSessionUseCase(
+                sessionGateway,
+                userGateway,
+                tokenProvider,
+                tokenHasher,
+                transactionManager,
+                jwtConfig.getAccessTokenExpirationMs(),
+                jwtConfig.getRefreshTokenExpirationMs()
+        );
+    }
+
+    @Bean
+    public LogoutUserUseCase logoutUserUseCase(
+            final SessionGateway sessionGateway,
+            final TokenHasher tokenHasher,
+            final TransactionManager transactionManager
+    ) {
+        return new LogoutUserUseCase(sessionGateway, tokenHasher, transactionManager);
+    }
+
 //    @Bean
 //    public LogoutAllSessionsUseCase logoutAllSessionsUseCase(
 //            final SessionGateway sessionGateway,
