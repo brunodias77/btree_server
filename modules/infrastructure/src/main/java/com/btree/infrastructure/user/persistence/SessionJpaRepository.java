@@ -14,6 +14,20 @@ public interface SessionJpaRepository extends JpaRepository<SessionJpaEntity, UU
 
     Optional<SessionJpaEntity> findByRefreshTokenHash(String refreshTokenHash);
 
+    @Query(value = """
+        UPDATE users.sessions
+        SET revoked = true,
+            version = version + 1
+        WHERE refresh_token_hash = :refreshTokenHash
+          AND revoked = false
+          AND expires_at > :now
+        RETURNING *
+        """, nativeQuery = true)
+    Optional<SessionJpaEntity> revokeActiveByRefreshTokenHash(
+            @Param("refreshTokenHash") String refreshTokenHash,
+            @Param("now") Instant now
+    );
+
     @Modifying
     @Query("""
         UPDATE SessionJpaEntity s

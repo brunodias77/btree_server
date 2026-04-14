@@ -45,6 +45,13 @@ public class SessionPostgresGateway implements SessionGateway {
     }
 
     @Override
+    public Optional<Session> revokeActiveByRefreshTokenHash(final String refreshTokenHash, final Instant now) {
+        return sessionJpaRepository
+                .revokeActiveByRefreshTokenHash(refreshTokenHash, now)
+                .map(SessionJpaEntity::toAggregate);
+    }
+
+    @Override
     public int revokeAllByUserId(final UserId userId) {
         return sessionJpaRepository.revokeAllActiveByUserId(
                 userId.getValue(),

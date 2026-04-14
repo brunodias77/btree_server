@@ -1,4 +1,4 @@
-package com.btree.application.usecase.user.auth.refresh;
+package com.btree.application.usecase.user.auth.refresh_session;
 
 /**
  * Comando de entrada para renovação de sessão.

@@ -1,6 +1,7 @@
-package com.btree.application.usecase.user.auth.refresh;
+package com.btree.application.usecase.user.auth.refresh_session;
 
 import com.btree.domain.user.entity.Session;
+import com.btree.domain.user.error.AuthError;
 import com.btree.domain.user.error.UserError;
 import com.btree.domain.user.gateway.SessionGateway;
 import com.btree.domain.user.gateway.UserGateway;
@@ -41,63 +42,44 @@ public class RefreshSessionUseCase implements UseCase<RefreshSessionCommand, Ref
     public Either<Notification, RefreshSessionOutput> execute(RefreshSessionCommand refreshSessionCommand) {
         final var notification = Notification.create();
 
-        // 1. Buscar sessão pelo hash do refresh token
+        // 1. Gerar dados do novo access/refresh token fora da transação.
         final var tokenHash = _tokenHasher.hash(refreshSessionCommand.refreshToken());
-        final var sessionOpt = _sessionGateway.findByRefreshTokenHash(tokenHash);
-
-        if (sessionOpt.isEmpty()) {
-            notification.append(UserError.SESSION_NOT_FOUND);
-            return Left(notification);
-        }
-
-        final var session = sessionOpt.get();
-
-        // 2. Validar estado da sessão
-        if (session.isRevoked()) {
-            notification.append(UserError.SESSION_REVOKED);
-            return Left(notification);
-        }
-        if (session.isExpired()) {
-            notification.append(UserError.SESSION_EXPIRED);
-            return Left(notification);
-        }
-
-        // 3. Buscar usuário para claims do novo access token
-        final var userOpt = _userGateway.findById(session.getUserId());
-        if (userOpt.isEmpty()) {
-            notification.append(UserError.USER_NOT_FOUND);
-            return Left(notification);
-        }
-
-        final var user = userOpt.get();
-
-        // 4. Gerar novos tokens
         final var now = Instant.now();
         final var accessTokenExpiresAt = now.plusMillis(_accessTokenExpirationMs);
         final var refreshTokenExpiresAt = now.plusMillis(_refreshTokenExpirationMs);
-
-        final var newAccessToken = _tokenProvider.generate(
-                user.getId().getValue().toString(),
-                Map.of("username", user.getUsername(), "email", user.getEmail()),
-                accessTokenExpiresAt
-        );
-
         final var newRawRefreshToken = _tokenHasher.generate();
         final var newRefreshTokenHash = _tokenHasher.hash(newRawRefreshToken);
 
-        // 5. Criar nova sessão (mesmo dispositivo)
-        final var newSession = Session.create(
-                user.getId(),
-                newRefreshTokenHash,
-                session.getDeviceInfo(),
-                refreshTokenExpiresAt,
-                Notification.create()
-        );
-
-        // 6. Em transação: revogar sessão antiga e persistir nova
+        // 2. Consumir o refresh token de forma atômica e criar a nova sessão.
         return Try(() -> _transactionManager.execute(() -> {
-            session.revoke();
-            _sessionGateway.update(session);
+            final var sessionOpt = _sessionGateway.revokeActiveByRefreshTokenHash(tokenHash, now);
+
+            if (sessionOpt.isEmpty()) {
+                notification.append(AuthError.INVALID_REFRESH_TOKEN);
+                return null;
+            }
+
+            final var session = sessionOpt.get();
+            final var userOpt = _userGateway.findById(session.getUserId());
+            if (userOpt.isEmpty()) {
+                notification.append(UserError.USER_NOT_FOUND);
+                return null;
+            }
+
+            final var user = userOpt.get();
+            final var newAccessToken = _tokenProvider.generate(
+                    user.getId().getValue().toString(),
+                    Map.of("username", user.getUsername(), "email", user.getEmail()),
+                    accessTokenExpiresAt
+            );
+
+            final var newSession = Session.create(
+                    user.getId(),
+                    newRefreshTokenHash,
+                    session.getDeviceInfo(),
+                    refreshTokenExpiresAt,
+                    Notification.create()
+            );
             _sessionGateway.create(newSession);
 
             return new RefreshSessionOutput(
@@ -108,6 +90,8 @@ public class RefreshSessionUseCase implements UseCase<RefreshSessionCommand, Ref
                     user.getUsername(),
                     user.getEmail()
             );
-        })).toEither().mapLeft(Notification::create);
+        })).toEither()
+                .mapLeft(Notification::create)
+                .flatMap(output -> notification.hasError() ? Left(notification) : Either.right(output));
     }
 }
