@@ -7,8 +7,12 @@ import com.btree.domain.user.identifier.SessionId;
 import com.btree.domain.user.identifier.UserId;
 import com.btree.domain.user.valueobject.DeviceInfo;
 import com.btree.shared.contract.TokenHasher;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -17,56 +21,68 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @DisplayName("LogoutUserUseCase")
+@ExtendWith(MockitoExtension.class)
 class LogoutUserUseCaseTest extends UseCaseTest {
+
+    @Mock private SessionGateway sessionGateway;
+    @Mock private TokenHasher tokenHasher;
+
+    private LogoutUserUseCase useCase;
+
+    @BeforeEach
+    void setUp() {
+        useCase = new LogoutUserUseCase(
+                sessionGateway,
+                tokenHasher,
+                new ImmediateTransactionManager()
+        );
+    }
 
     @Test
     @DisplayName("deve retornar erro quando refresh token esta ausente")
     void shouldReturnErrorWhenRefreshTokenIsMissing() {
-        final var sessionGateway = new FakeSessionGateway();
-        final var tokenHasher = new FakeTokenHasher();
-        final var useCase = newUseCase(sessionGateway, tokenHasher);
-
         final var result = useCase.execute(new LogoutUserCommand(" "));
 
         assertTrue(result.isLeft());
         assertEquals("Refresh token inválido ou expirado", firstError(result.getLeft()));
-        assertEquals(0, tokenHasher.hashCalls);
-        assertEquals(0, sessionGateway.findCalls);
-        assertEquals(0, sessionGateway.updateCalls);
+        verify(tokenHasher, never()).hash(any());
+        verify(sessionGateway, never()).findByRefreshTokenHash(any());
+        verify(sessionGateway, never()).update(any());
     }
 
     @Test
     @DisplayName("deve ser idempotente quando sessao nao existe")
     void shouldBeIdempotentWhenSessionDoesNotExist() {
-        final var sessionGateway = new FakeSessionGateway();
-        final var tokenHasher = new FakeTokenHasher();
-        final var useCase = newUseCase(sessionGateway, tokenHasher);
+        when(tokenHasher.hash("raw-refresh-token")).thenReturn("hashed-raw-refresh-token");
+        when(sessionGateway.findByRefreshTokenHash("hashed-raw-refresh-token")).thenReturn(Optional.empty());
 
         final var result = useCase.execute(new LogoutUserCommand("raw-refresh-token"));
 
         assertTrue(result.isRight());
         assertNull(result.get());
-        assertEquals("hashed-raw-refresh-token", sessionGateway.findByRefreshTokenHashValue);
-        assertEquals(0, sessionGateway.updateCalls);
+        verify(sessionGateway).findByRefreshTokenHash("hashed-raw-refresh-token");
+        verify(sessionGateway, never()).update(any());
     }
 
     @Test
     @DisplayName("deve revogar sessao ativa")
     void shouldRevokeActiveSession() {
         final var session = activeSession();
-        final var sessionGateway = new FakeSessionGateway();
-        sessionGateway.session = session;
-        final var tokenHasher = new FakeTokenHasher();
-        final var useCase = newUseCase(sessionGateway, tokenHasher);
+        when(tokenHasher.hash("raw-refresh-token")).thenReturn("hashed-raw-refresh-token");
+        when(sessionGateway.findByRefreshTokenHash("hashed-raw-refresh-token")).thenReturn(Optional.of(session));
+        when(sessionGateway.update(any())).thenAnswer(inv -> inv.getArgument(0));
 
         final var result = useCase.execute(new LogoutUserCommand("raw-refresh-token"));
 
         assertTrue(result.isRight());
         assertTrue(session.isRevoked());
-        assertEquals(1, sessionGateway.updateCalls);
-        assertEquals(session, sessionGateway.updatedSession);
+        verify(sessionGateway).update(session);
     }
 
     @Test
@@ -74,43 +90,28 @@ class LogoutUserUseCaseTest extends UseCaseTest {
     void shouldReturnSuccessWithoutUpdateWhenSessionIsAlreadyRevoked() {
         final var session = activeSession();
         session.revoke();
-        final var sessionGateway = new FakeSessionGateway();
-        sessionGateway.session = session;
-        final var tokenHasher = new FakeTokenHasher();
-        final var useCase = newUseCase(sessionGateway, tokenHasher);
+        when(tokenHasher.hash("raw-refresh-token")).thenReturn("hashed-raw-refresh-token");
+        when(sessionGateway.findByRefreshTokenHash("hashed-raw-refresh-token")).thenReturn(Optional.of(session));
 
         final var result = useCase.execute(new LogoutUserCommand("raw-refresh-token"));
 
         assertTrue(result.isRight());
         assertTrue(session.isRevoked());
-        assertEquals(0, sessionGateway.updateCalls);
+        verify(sessionGateway, never()).update(any());
     }
 
     @Test
     @DisplayName("deve retornar sucesso sem atualizar quando sessao esta expirada")
     void shouldReturnSuccessWithoutUpdateWhenSessionIsExpired() {
         final var session = expiredSession();
-        final var sessionGateway = new FakeSessionGateway();
-        sessionGateway.session = session;
-        final var tokenHasher = new FakeTokenHasher();
-        final var useCase = newUseCase(sessionGateway, tokenHasher);
+        when(tokenHasher.hash("raw-refresh-token")).thenReturn("hashed-raw-refresh-token");
+        when(sessionGateway.findByRefreshTokenHash("hashed-raw-refresh-token")).thenReturn(Optional.of(session));
 
         final var result = useCase.execute(new LogoutUserCommand("raw-refresh-token"));
 
         assertTrue(result.isRight());
         assertFalse(session.isRevoked());
-        assertEquals(0, sessionGateway.updateCalls);
-    }
-
-    private static LogoutUserUseCase newUseCase(
-            final SessionGateway sessionGateway,
-            final TokenHasher tokenHasher
-    ) {
-        return new LogoutUserUseCase(
-                sessionGateway,
-                tokenHasher,
-                new ImmediateTransactionManager()
-        );
+        verify(sessionGateway, never()).update(any());
     }
 
     private static Session activeSession() {
@@ -140,57 +141,4 @@ class LogoutUserUseCaseTest extends UseCaseTest {
                 0
         );
     }
-
-    private static final class FakeSessionGateway implements SessionGateway {
-        private Session session;
-        private int findCalls;
-        private String findByRefreshTokenHashValue;
-        private int updateCalls;
-        private Session updatedSession;
-
-        @Override
-        public Session create(final Session session) {
-            return session;
-        }
-
-        @Override
-        public Session update(final Session session) {
-            this.updateCalls++;
-            this.updatedSession = session;
-            return session;
-        }
-
-        @Override
-        public Optional<Session> findByRefreshTokenHash(final String refreshTokenHash) {
-            this.findCalls++;
-            this.findByRefreshTokenHashValue = refreshTokenHash;
-            return Optional.ofNullable(session);
-        }
-
-        @Override
-        public Optional<Session> revokeActiveByRefreshTokenHash(final String refreshTokenHash, final Instant now) {
-            return Optional.empty();
-        }
-
-        @Override
-        public int revokeAllByUserId(final UserId userId) {
-            return 0;
-        }
-    }
-
-    private static final class FakeTokenHasher implements TokenHasher {
-        private int hashCalls;
-
-        @Override
-        public String generate() {
-            return "raw-refresh-token";
-        }
-
-        @Override
-        public String hash(final String token) {
-            this.hashCalls++;
-            return "hashed-" + token;
-        }
-    }
-
 }
