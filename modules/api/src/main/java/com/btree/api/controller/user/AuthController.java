@@ -1,14 +1,13 @@
 package com.btree.api.controller.user;
 
-import com.btree.api.dto.request.user.LoginUserRequest;
-import com.btree.api.dto.request.user.RefreshTokenRequest;
-import com.btree.api.dto.request.user.RegisterUserRequest;
-import com.btree.api.dto.request.user.VerifyEmailRequest;
+import com.btree.api.dto.request.user.*;
 import com.btree.api.dto.response.user.LoginUserResponse;
 import com.btree.api.dto.response.user.RefreshTokenResponse;
 import com.btree.api.dto.response.user.RegisterUserResponse;
 import com.btree.application.usecase.user.auth.login.LoginUserCommand;
 import com.btree.application.usecase.user.auth.login.LoginUserUseCase;
+import com.btree.application.usecase.user.auth.logout.LogoutUserCommand;
+import com.btree.application.usecase.user.auth.logout.LogoutUserUseCase;
 import com.btree.application.usecase.user.auth.refresh.RefreshSessionCommand;
 import com.btree.application.usecase.user.auth.refresh.RefreshSessionUseCase;
 import com.btree.application.usecase.user.auth.register.RegisterUserCommand;
@@ -36,13 +35,14 @@ public class AuthController {
     private final LoginUserUseCase _loginUserUseCase;
     private final VerifyEmailUseCase _verifyEmailUseCase;
     private final RefreshSessionUseCase _refreshSessionUseCase;
+    private final LogoutUserUseCase _logoutUserUseCase;
 
-
-    public AuthController(RegisterUserUseCase _registerUserUseCase, LoginUserUseCase _loginUserUseCase, VerifyEmailUseCase _verifyEmailUseCase, RefreshSessionUseCase _refreshSessionUseCase) {
+    public AuthController(RegisterUserUseCase _registerUserUseCase, LoginUserUseCase _loginUserUseCase, VerifyEmailUseCase _verifyEmailUseCase, RefreshSessionUseCase _refreshSessionUseCase, LogoutUserUseCase _logoutUserUseCase) {
         this._registerUserUseCase = _registerUserUseCase;
         this._loginUserUseCase = _loginUserUseCase;
         this._verifyEmailUseCase = _verifyEmailUseCase;
         this._refreshSessionUseCase = _refreshSessionUseCase;
+        this._logoutUserUseCase = _logoutUserUseCase;
     }
 
     @PostMapping("/register")
@@ -120,5 +120,18 @@ public class AuthController {
                 _refreshSessionUseCase.execute(command)
                         .getOrElseThrow(n -> DomainException.with(n.getErrors()))
         );
+    }
+
+
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Encerrar sessão", description = "Revoga o refresh token, impedindo renovação futura de tokens")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Sessão encerrada com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Refresh token ausente ou inválido")
+    })
+    public void logout(@Valid @RequestBody final LogoutRequest request) {
+        _logoutUserUseCase.execute(new LogoutUserCommand(request.refreshToken()))
+                .getOrElseThrow(n -> DomainException.with(n.getErrors()));
     }
 }
