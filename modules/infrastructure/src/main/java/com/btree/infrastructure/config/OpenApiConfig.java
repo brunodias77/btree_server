@@ -5,6 +5,7 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -28,6 +29,9 @@ public class OpenApiConfig {
                         .title("BTree E-commerce API")
                         .version("1.0.0")
                         .description("Plataforma de e-commerce B2C — mercado brasileiro"))
+                .addServersItem(new Server()
+                        .url("/api")
+                        .description("Base path da API"))
                 .addSecurityItem(new SecurityRequirement().addList(SECURITY_SCHEME))
                 .components(new Components()
                         .addSecuritySchemes(SECURITY_SCHEME, new SecurityScheme()
