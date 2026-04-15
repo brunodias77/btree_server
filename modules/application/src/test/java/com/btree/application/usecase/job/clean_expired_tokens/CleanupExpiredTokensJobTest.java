@@ -4,6 +4,7 @@ import com.btree.domain.user.gateway.UserTokenGateway;
 import com.btree.shared.contract.TransactionManager;
 import com.btree.shared.usecase.JobResult;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -15,6 +16,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@DisplayName("Cleanup expired tokens job")
 class CleanupExpiredTokensJobTest {
 
     @Mock UserTokenGateway userTokenGateway;
@@ -34,6 +36,7 @@ class CleanupExpiredTokensJobTest {
     // ── testes ───────────────────────────────────────────────────────────────
 
     @Test
+    @DisplayName("Deve apagar tokens expirados e retornar a quantidade processada")
     void givenExpiredTokensExist_whenExecute_thenDeleteAndReturnCount() {
         when(userTokenGateway.deleteExpired(500)).thenReturn(42);
 
@@ -47,6 +50,7 @@ class CleanupExpiredTokensJobTest {
     }
 
     @Test
+    @DisplayName("Deve retornar zero quando nao houver tokens expirados")
     void givenNoExpiredTokens_whenExecute_thenReturnZeroCount() {
         when(userTokenGateway.deleteExpired(anyInt())).thenReturn(0);
 
@@ -57,6 +61,7 @@ class CleanupExpiredTokensJobTest {
     }
 
     @Test
+    @DisplayName("Deve repassar batch size customizado para o gateway")
     void givenCustomBatchSize_whenExecute_thenPassBatchSizeToGateway() {
         when(userTokenGateway.deleteExpired(100)).thenReturn(10);
 
@@ -66,6 +71,7 @@ class CleanupExpiredTokensJobTest {
     }
 
     @Test
+    @DisplayName("Deve retornar erro quando a transacao falhar")
     void givenDatabaseException_whenExecute_thenReturnLeft() {
         doThrow(new RuntimeException("DB unavailable")).when(transactionManager).execute(any());
 
@@ -78,6 +84,7 @@ class CleanupExpiredTokensJobTest {
     }
 
     @Test
+    @DisplayName("Deve usar batch size padrao de 500")
     void givenDefaultBatch_whenExecute_thenUseBatchSize500() {
         when(userTokenGateway.deleteExpired(500)).thenReturn(0);
 
@@ -87,6 +94,7 @@ class CleanupExpiredTokensJobTest {
     }
 
     @Test
+    @DisplayName("Deve rejeitar batch size invalido ao criar o comando")
     void givenInvalidBatchSize_whenCreateCommand_thenThrowIllegalArgument() {
         assertThrows(IllegalArgumentException.class, () -> new CleanupExpiredTokens(0));
         assertThrows(IllegalArgumentException.class, () -> new CleanupExpiredTokens(-1));

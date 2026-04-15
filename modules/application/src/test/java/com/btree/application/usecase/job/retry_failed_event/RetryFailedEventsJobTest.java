@@ -6,6 +6,7 @@ import com.btree.shared.gateway.OutboxEventGateway.PendingEvent;
 import com.btree.shared.gateway.ProcessedEventGateway;
 import com.btree.shared.usecase.JobResult;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -23,6 +24,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@DisplayName("Retry failed events job")
 class RetryFailedEventsJobTest {
 
     @Mock OutboxEventGateway outboxEventGateway;
@@ -49,6 +51,7 @@ class RetryFailedEventsJobTest {
     // ── testes ───────────────────────────────────────────────────────────────
 
     @Test
+    @DisplayName("Deve retornar resultado vazio quando nao houver eventos retentaveis")
     void givenNoRetryableEvents_whenExecute_thenReturnEmpty() {
         when(outboxEventGateway.findRetryable(anyInt(), anyInt())).thenReturn(List.of());
 
@@ -63,6 +66,7 @@ class RetryFailedEventsJobTest {
     }
 
     @Test
+    @DisplayName("Deve retentar todos os eventos retentaveis")
     void givenRetryableEvents_whenExecute_thenRetryAll() {
         final var event1 = buildEvent();
         final var event2 = buildEvent();
@@ -81,6 +85,7 @@ class RetryFailedEventsJobTest {
     }
 
     @Test
+    @DisplayName("Deve registrar evento processado e marcar outbox como processado")
     void givenRetryableEvent_whenExecute_thenRecordProcessedAndMarkOutbox() {
         final var event = buildEvent();
         when(outboxEventGateway.findRetryable(anyInt(), anyInt())).thenReturn(List.of(event));
@@ -95,6 +100,7 @@ class RetryFailedEventsJobTest {
     }
 
     @Test
+    @DisplayName("Deve pular evento ja processado mantendo idempotencia")
     void givenAlreadyProcessedEvent_whenRetrying_thenSkipWithIdempotency() {
         final var event = buildEvent();
         when(outboxEventGateway.findRetryable(anyInt(), anyInt())).thenReturn(List.of(event));
@@ -113,6 +119,7 @@ class RetryFailedEventsJobTest {
     }
 
     @Test
+    @DisplayName("Deve marcar evento como falho e continuar quando a retentativa falhar")
     void givenEventThatFailsDuringRetry_whenExecute_thenMarkAsFailedAndContinue() {
         final var failingEvent = buildEvent();
         final var goodEvent    = buildEvent();
@@ -145,6 +152,7 @@ class RetryFailedEventsJobTest {
     }
 
     @Test
+    @DisplayName("Deve retornar contadores corretos para eventos retentaveis mistos")
     void givenMixedRetryableEvents_whenExecute_thenReturnCorrectCounters() {
         final var goodEvent    = buildEvent();
         final var doneEvent    = buildEvent();
@@ -178,6 +186,7 @@ class RetryFailedEventsJobTest {
     }
 
     @Test
+    @DisplayName("Deve retornar erro quando a busca por eventos retentaveis falhar")
     void givenFindRetryableThrows_whenExecute_thenReturnLeft() {
         when(outboxEventGateway.findRetryable(anyInt(), anyInt()))
                 .thenThrow(new RuntimeException("DB error"));
@@ -189,6 +198,7 @@ class RetryFailedEventsJobTest {
     }
 
     @Test
+    @DisplayName("Deve usar max retries informado no comando ao buscar eventos")
     void givenMaxRetriesPassedToGateway_whenExecute_thenUseCommandMaxRetries() {
         when(outboxEventGateway.findRetryable(3, 20)).thenReturn(List.of());
 
@@ -198,6 +208,7 @@ class RetryFailedEventsJobTest {
     }
 
     @Test
+    @DisplayName("Deve rejeitar argumentos invalidos ao criar o comando")
     void givenInvalidCommandArgs_whenCreate_thenThrowIllegalArgument() {
         assertThrows(IllegalArgumentException.class, () -> new RetryFailedEvents(0, 5));
         assertThrows(IllegalArgumentException.class, () -> new RetryFailedEvents(50, 0));

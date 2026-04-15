@@ -9,6 +9,7 @@ import com.btree.domain.user.valueobject.DeviceInfo;
 import com.btree.shared.contract.TokenHasher;
 import com.btree.shared.contract.TransactionManager;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -23,6 +24,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@DisplayName("Logout user use case")
 class LogoutUserUseCaseTest {
 
     @Mock SessionGateway sessionGateway;
@@ -69,6 +71,7 @@ class LogoutUserUseCaseTest {
     // ── testes ───────────────────────────────────────────────────────────────
 
     @Test
+    @DisplayName("Deve revogar sessao ativa")
     void givenActiveSession_whenExecute_thenRevokeSession() {
         final var session = buildActiveSession();
         when(tokenHasher.hash("raw-token")).thenReturn("refresh-hash");
@@ -84,6 +87,7 @@ class LogoutUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar erro quando o refresh token for nulo")
     void givenNullRefreshToken_whenExecute_thenReturnLeft() {
         final var result = useCase.execute(new LogoutUserCommand(null));
 
@@ -94,6 +98,7 @@ class LogoutUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar erro quando o refresh token estiver em branco")
     void givenBlankRefreshToken_whenExecute_thenReturnLeft() {
         final var result = useCase.execute(new LogoutUserCommand("   "));
 
@@ -104,6 +109,7 @@ class LogoutUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar sucesso idempotente quando a sessao nao for encontrada")
     void givenSessionNotFound_whenExecute_thenReturnRightIdempotently() {
         when(tokenHasher.hash(anyString())).thenReturn("some-hash");
         when(sessionGateway.findByRefreshTokenHash(anyString())).thenReturn(Optional.empty());
@@ -115,6 +121,7 @@ class LogoutUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar sucesso sem atualizar quando a sessao ja estiver revogada")
     void givenRevokedSession_whenExecute_thenReturnRightWithoutUpdating() {
         final var session = buildRevokedSession();
         when(tokenHasher.hash(anyString())).thenReturn("refresh-hash");
@@ -127,6 +134,7 @@ class LogoutUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar sucesso sem atualizar quando a sessao estiver expirada")
     void givenExpiredSession_whenExecute_thenReturnRightWithoutUpdating() {
         final var session = buildExpiredSession();
         when(tokenHasher.hash(anyString())).thenReturn("refresh-hash");

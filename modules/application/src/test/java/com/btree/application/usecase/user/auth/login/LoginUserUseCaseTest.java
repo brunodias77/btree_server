@@ -19,6 +19,7 @@ import com.btree.shared.contract.TransactionManager;
 import com.btree.shared.enums.TokenType;
 import com.btree.shared.event.DomainEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -32,6 +33,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@DisplayName("Login user use case")
 class LoginUserUseCaseTest {
 
     @Mock UserGateway userGateway;
@@ -97,6 +99,7 @@ class LoginUserUseCaseTest {
     // ── testes ───────────────────────────────────────────────────────────────
 
     @Test
+    @DisplayName("Deve retornar tokens quando as credenciais forem validas")
     void givenValidCredentials_whenExecute_thenReturnTokens() {
         final var user = buildActiveUser();
         final var session = buildSession(user.getId());
@@ -123,6 +126,7 @@ class LoginUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar left sem erros quando o identificador nao existir")
     void givenUnknownIdentifier_whenExecute_thenReturnLeftWithNoErrors() {
         when(userGateway.findByUsernameOrEmail(any())).thenReturn(Optional.empty());
 
@@ -133,6 +137,7 @@ class LoginUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar left quando o usuario estiver desabilitado")
     void givenDisabledUser_whenExecute_thenReturnLeft() {
         final var user = User.with(
                 UserId.unique(), "johndoe", "john@example.com",
@@ -149,6 +154,7 @@ class LoginUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar erro de conta bloqueada quando o bloqueio estiver ativo")
     void givenLockedAccount_whenExecute_thenReturnAccountLockedError() {
         final var user = User.with(
                 UserId.unique(), "johndoe", "john@example.com",
@@ -168,6 +174,7 @@ class LoginUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve desbloquear automaticamente e fazer login quando o bloqueio expirou")
     void givenExpiredLock_whenExecute_thenAutoUnlockAndLogin() {
         final var user = User.with(
                 UserId.unique(), "johndoe", "john@example.com",
@@ -195,6 +202,7 @@ class LoginUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar credenciais invalidas quando a senha estiver incorreta")
     void givenInvalidPassword_whenExecute_thenReturnInvalidCredentials() {
         final var user = buildActiveUser();
         when(userGateway.findByUsernameOrEmail(any())).thenReturn(Optional.of(user));
@@ -208,6 +216,7 @@ class LoginUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve bloquear a conta quando exceder o limite de tentativas falhas")
     void givenRepeatedFailedAttempts_whenExceedsMax_thenLockAccount() {
         // accessFailedCount starts at MAX_FAILED_ATTEMPTS - 1, so next failure triggers lock
         final var user = User.with(
@@ -228,6 +237,7 @@ class LoginUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve zerar contador de falhas quando o login for bem-sucedido")
     void givenPositiveFailCount_whenLoginSucceeds_thenResetFailCount() {
         final var user = User.with(
                 UserId.unique(), "johndoe", "john@example.com",
@@ -254,6 +264,7 @@ class LoginUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve exigir segundo fator quando 2FA estiver habilitado")
     void givenTwoFactorEnabled_whenExecute_thenReturnTwoFactorRequired() {
         final var user = User.with(
                 UserId.unique(), "johndoe", "john@example.com",
@@ -281,6 +292,7 @@ class LoginUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve normalizar email para minusculo antes de buscar o usuario")
     void givenEmailAsIdentifier_whenExecute_thenFindByLowercaseIdentifier() {
         final var user = buildActiveUser();
         final var session = buildSession(user.getId());

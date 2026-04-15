@@ -15,6 +15,7 @@ import com.btree.shared.enums.TokenType;
 import com.btree.shared.event.DomainEventPublisher;
 import com.btree.shared.event.IntegrationEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -28,6 +29,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@DisplayName("Register user use case")
 class RegisterUserUseCaseTest {
 
     @Mock UserGateway userGateway;
@@ -77,6 +79,7 @@ class RegisterUserUseCaseTest {
     // ── testes ───────────────────────────────────────────────────────────────
 
     @Test
+    @DisplayName("Deve criar usuario com sucesso quando o comando for valido")
     void givenValidCommand_whenExecute_thenCreateUserSuccessfully() {
         final var savedUser = buildSavedUser("johndoe", "john@example.com");
         final var token = buildVerificationToken(savedUser.getId());
@@ -105,6 +108,7 @@ class RegisterUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve normalizar username e email para minusculo")
     void givenValidCommand_whenExecute_thenNormalizesToLowercase() {
         final var savedUser = buildSavedUser("johndoe", "john@example.com");
         final var token = buildVerificationToken(savedUser.getId());
@@ -128,6 +132,7 @@ class RegisterUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar erro quando a senha for fraca")
     void givenWeakPassword_whenExecute_thenReturnPasswordError() {
         final var result = useCase.execute(
                 new RegisterUserCommand("johndoe", "john@example.com", "weakpass")
@@ -139,6 +144,7 @@ class RegisterUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar erro quando o username ja existir")
     void givenExistingUsername_whenExecute_thenReturnUsernameError() {
         when(userGateway.existsByUsername("johndoe")).thenReturn(true);
         when(userGateway.existsByEmail(anyString())).thenReturn(false);
@@ -154,6 +160,7 @@ class RegisterUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar erro quando o email ja existir")
     void givenExistingEmail_whenExecute_thenReturnEmailError() {
         when(userGateway.existsByUsername(anyString())).thenReturn(false);
         when(userGateway.existsByEmail("john@example.com")).thenReturn(true);
@@ -169,6 +176,7 @@ class RegisterUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar erros quando username e email ja existirem")
     void givenBothExistingUsernameAndEmail_whenExecute_thenReturnBothErrors() {
         when(userGateway.existsByUsername("johndoe")).thenReturn(true);
         when(userGateway.existsByEmail("john@example.com")).thenReturn(true);
@@ -184,6 +192,7 @@ class RegisterUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve atribuir papel customer ao usuario criado")
     void givenValidCommand_whenExecute_thenAssignCustomerRole() {
         final var savedUser = buildSavedUser("johndoe", "john@example.com");
         final var token = buildVerificationToken(savedUser.getId());
@@ -206,6 +215,7 @@ class RegisterUserUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve enviar email de verificacao para o usuario criado")
     void givenValidCommand_whenExecute_thenSendVerificationEmail() {
         final var savedUser = buildSavedUser("johndoe", "john@example.com");
         final var token = buildVerificationToken(savedUser.getId());

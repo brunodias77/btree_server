@@ -11,6 +11,7 @@ import com.btree.shared.contract.TokenHasher;
 import com.btree.shared.contract.TransactionManager;
 import com.btree.shared.enums.TokenType;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -25,6 +26,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@DisplayName("Verify email use case")
 class VerifyEmailUseCaseTest {
 
     @Mock UserTokenGateway userTokenGateway;
@@ -112,6 +114,7 @@ class VerifyEmailUseCaseTest {
     // ── testes ───────────────────────────────────────────────────────────────
 
     @Test
+    @DisplayName("Deve verificar email quando o token for valido")
     void givenValidToken_whenExecute_thenVerifyEmail() {
         final var uid = userId();
         final var token = buildValidToken(uid);
@@ -132,6 +135,7 @@ class VerifyEmailUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve marcar token como usado quando o token for valido")
     void givenValidToken_whenExecute_thenMarkTokenAsUsed() {
         final var uid = userId();
         final var token = buildValidToken(uid);
@@ -150,6 +154,7 @@ class VerifyEmailUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar erro quando o token nao for encontrado")
     void givenTokenNotFound_whenExecute_thenReturnTokenNotFoundError() {
         when(tokenHasher.hash(anyString())).thenReturn("token-hash");
         when(userTokenGateway.findByTokenHash(anyString())).thenReturn(Optional.empty());
@@ -162,6 +167,7 @@ class VerifyEmailUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar erro quando o token tiver tipo invalido")
     void givenWrongTokenType_whenExecute_thenReturnTokenInvalidTypeError() {
         final var uid = userId();
         final var token = buildWrongTypeToken(uid);
@@ -177,6 +183,7 @@ class VerifyEmailUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar erro quando o token estiver expirado")
     void givenExpiredToken_whenExecute_thenReturnTokenExpiredError() {
         final var uid = userId();
         final var token = buildExpiredToken(uid);
@@ -192,6 +199,7 @@ class VerifyEmailUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar erro quando o token ja tiver sido usado")
     void givenAlreadyUsedToken_whenExecute_thenReturnTokenAlreadyUsedError() {
         final var uid = userId();
         final var token = buildUsedToken(uid);
@@ -207,6 +215,7 @@ class VerifyEmailUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar erro quando o usuario nao for encontrado")
     void givenUserNotFound_whenExecute_thenReturnUserNotFoundError() {
         final var uid = userId();
         final var token = buildValidToken(uid);
@@ -223,6 +232,7 @@ class VerifyEmailUseCaseTest {
     }
 
     @Test
+    @DisplayName("Deve retornar erro quando o email ja estiver verificado")
     void givenEmailAlreadyVerified_whenExecute_thenReturnEmailAlreadyVerifiedError() {
         final var uid = userId();
         final var token = buildValidToken(uid);

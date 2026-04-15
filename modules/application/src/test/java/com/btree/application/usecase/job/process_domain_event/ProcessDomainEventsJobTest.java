@@ -6,6 +6,7 @@ import com.btree.shared.gateway.OutboxEventGateway.PendingEvent;
 import com.btree.shared.gateway.ProcessedEventGateway;
 import com.btree.shared.usecase.JobResult;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -21,6 +22,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@DisplayName("Process domain events job")
 class ProcessDomainEventsJobTest {
 
     @Mock OutboxEventGateway outboxEventGateway;
@@ -47,6 +49,7 @@ class ProcessDomainEventsJobTest {
     // ── testes ───────────────────────────────────────────────────────────────
 
     @Test
+    @DisplayName("Deve retornar resultado vazio quando nao houver eventos pendentes")
     void givenNoPendingEvents_whenExecute_thenReturnEmpty() {
         when(outboxEventGateway.findPending(anyInt())).thenReturn(List.of());
 
@@ -61,6 +64,7 @@ class ProcessDomainEventsJobTest {
     }
 
     @Test
+    @DisplayName("Deve processar todos os eventos pendentes ainda nao processados")
     void givenPendingNewEvents_whenExecute_thenProcessAll() {
         final var event1 = buildEvent();
         final var event2 = buildEvent();
@@ -79,6 +83,7 @@ class ProcessDomainEventsJobTest {
     }
 
     @Test
+    @DisplayName("Deve registrar evento processado e marcar outbox como processado")
     void givenNewEvent_whenExecute_thenRecordProcessedAndMarkOutbox() {
         final var event = buildEvent();
         when(outboxEventGateway.findPending(anyInt())).thenReturn(List.of(event));
@@ -93,6 +98,7 @@ class ProcessDomainEventsJobTest {
     }
 
     @Test
+    @DisplayName("Deve pular evento ja processado mantendo idempotencia")
     void givenAlreadyProcessedEvent_whenExecute_thenSkipWithIdempotency() {
         final var event = buildEvent();
         when(outboxEventGateway.findPending(anyInt())).thenReturn(List.of(event));
@@ -110,6 +116,7 @@ class ProcessDomainEventsJobTest {
     }
 
     @Test
+    @DisplayName("Deve marcar evento como falho e continuar quando a transacao falhar")
     void givenEventThatFailsDuringTransaction_whenExecute_thenMarkAsFailedAndContinue() {
         final var failingEvent = buildEvent();
         final var goodEvent = buildEvent();
@@ -141,6 +148,7 @@ class ProcessDomainEventsJobTest {
     }
 
     @Test
+    @DisplayName("Deve retornar contadores corretos para eventos mistos")
     void givenMixedEvents_whenExecute_thenReturnCorrectCounters() {
         final var newEvent    = buildEvent();
         final var doneEvent   = buildEvent();
@@ -174,6 +182,7 @@ class ProcessDomainEventsJobTest {
     }
 
     @Test
+    @DisplayName("Deve retornar erro quando a busca por eventos pendentes falhar")
     void givenGatewayException_whenFindingPendingEvents_thenReturnLeft() {
         when(outboxEventGateway.findPending(anyInt())).thenThrow(new RuntimeException("Connection lost"));
 
@@ -184,6 +193,7 @@ class ProcessDomainEventsJobTest {
     }
 
     @Test
+    @DisplayName("Deve rejeitar batch size invalido ao criar o comando")
     void givenInvalidBatchSize_whenCreateCommand_thenThrowIllegalArgument() {
         assertThrows(IllegalArgumentException.class, () -> new ProcessDomainEvents(0));
         assertThrows(IllegalArgumentException.class, () -> new ProcessDomainEvents(-5));
