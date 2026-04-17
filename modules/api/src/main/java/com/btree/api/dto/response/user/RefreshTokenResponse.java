@@ -1,6 +1,6 @@
 package com.btree.api.dto.response.user;
 
-import com.btree.application.usecase.user.auth.refresh.RefreshSessionOutput;
+import com.btree.application.usecase.user.auth.refresh_session.RefreshSessionOutput;
 
 import java.time.Instant;
 

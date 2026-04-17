@@ -5,9 +5,10 @@ import com.btree.application.usecase.job.process_domain_event.ProcessDomainEvent
 import com.btree.application.usecase.job.retry_failed_event.RetryFailedEventsJob;
 import com.btree.application.usecase.user.auth.login.LoginUserUseCase;
 import com.btree.application.usecase.user.auth.logout.LogoutUserUseCase;
-import com.btree.application.usecase.user.auth.refresh.RefreshSessionUseCase;
+import com.btree.application.usecase.user.auth.refresh_session.RefreshSessionUseCase;
 import com.btree.application.usecase.user.auth.register.RegisterUserUseCase;
 import com.btree.application.usecase.user.auth.verify_email.VerifyEmailUseCase;
+import com.btree.application.usecase.user.get_current_user.GetCurrentUserUseCase;
 import com.btree.domain.user.gateway.LoginHistoryGateway;
 import com.btree.domain.user.gateway.SessionGateway;
 import com.btree.domain.user.gateway.UserGateway;
@@ -134,10 +135,10 @@ public class UseCaseConfig {
 //        return new LogoutAllSessionsUseCase(sessionGateway, transactionManager);
 //    }
 //
-//    @Bean
-//    public GetCurrentUserUseCase getCurrentUserUseCase(final UserGateway userGateway) {
-//        return new GetCurrentUserUseCase(userGateway);
-//    }
+    @Bean
+    public GetCurrentUserUseCase getCurrentUserUseCase(final UserGateway userGateway) {
+        return new GetCurrentUserUseCase(userGateway);
+    }
 //
 //    @Bean
 //    public RequestPasswordResetUseCase requestPasswordResetUseCase(

@@ -8,8 +8,8 @@ import com.btree.application.usecase.user.auth.login.LoginUserCommand;
 import com.btree.application.usecase.user.auth.login.LoginUserUseCase;
 import com.btree.application.usecase.user.auth.logout.LogoutUserCommand;
 import com.btree.application.usecase.user.auth.logout.LogoutUserUseCase;
-import com.btree.application.usecase.user.auth.refresh.RefreshSessionCommand;
-import com.btree.application.usecase.user.auth.refresh.RefreshSessionUseCase;
+import com.btree.application.usecase.user.auth.refresh_session.RefreshSessionCommand;
+import com.btree.application.usecase.user.auth.refresh_session.RefreshSessionUseCase;
 import com.btree.application.usecase.user.auth.register.RegisterUserCommand;
 import com.btree.application.usecase.user.auth.register.RegisterUserUseCase;
 import com.btree.application.usecase.user.auth.verify_email.VerifyEmailCommand;
@@ -23,8 +23,6 @@ import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/v1/auth")

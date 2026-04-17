@@ -1,4 +1,4 @@
-package com.btree.application.usecase.user.auth.refresh;
+package com.btree.application.usecase.user.auth.refresh_session;
 
 
 import java.time.Instant;
