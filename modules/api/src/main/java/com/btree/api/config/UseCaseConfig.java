@@ -6,15 +6,13 @@ import com.btree.application.usecase.job.retry_failed_event.RetryFailedEventsJob
 import com.btree.application.usecase.user.auth.confirm_password_reset.ConfirmPasswordResetUseCase;
 import com.btree.application.usecase.user.auth.forgot_password.ForgotPasswordUseCase;
 import com.btree.application.usecase.user.auth.login.LoginUserUseCase;
+import com.btree.application.usecase.user.auth.login_social_provider.LoginSocialProviderUseCase;
 import com.btree.application.usecase.user.auth.logout.LogoutUserUseCase;
 import com.btree.application.usecase.user.auth.refresh_session.RefreshSessionUseCase;
 import com.btree.application.usecase.user.auth.register.RegisterUserUseCase;
 import com.btree.application.usecase.user.auth.verify_email.VerifyEmailUseCase;
 import com.btree.application.usecase.user.get_current_user.GetCurrentUserUseCase;
-import com.btree.domain.user.gateway.LoginHistoryGateway;
-import com.btree.domain.user.gateway.SessionGateway;
-import com.btree.domain.user.gateway.UserGateway;
-import com.btree.domain.user.gateway.UserTokenGateway;
+import com.btree.domain.user.gateway.*;
 import com.btree.infrastructure.config.JwtConfig;
 import com.btree.shared.contract.*;
 import com.btree.shared.event.DomainEventPublisher;
@@ -173,29 +171,29 @@ public class UseCaseConfig {
     }
 
 //
-//    @Bean
-//    public LoginWithSocialProviderUseCase loginWithSocialProviderUseCase(
-//            final UserGateway userGateway,
-//            final SessionGateway sessionGateway,
-//            final UserSocialLoginGateway userSocialLoginGateway,
-//            final SocialProviderGateway socialProviderGateway,
-//            final TokenProvider tokenProvider,
-//            final TokenHasher tokenHasher,
-//            final TransactionManager transactionManager,
-//            final JwtConfig jwtConfig
-//    ) {
-//        return new LoginWithSocialProviderUseCase(
-//                userGateway,
-//                sessionGateway,
-//                userSocialLoginGateway,
-//                socialProviderGateway,
-//                tokenProvider,
-//                tokenHasher,
-//                transactionManager,
-//                jwtConfig.getAccessTokenExpirationMs(),
-//                jwtConfig.getRefreshTokenExpirationMs()
-//        );
-//    }
+    @Bean
+    public LoginSocialProviderUseCase loginWithSocialProviderUseCase(
+            final UserGateway userGateway,
+            final SessionGateway sessionGateway,
+            final UserSocialLoginGateway userSocialLoginGateway,
+            final SocialProviderGateway socialProviderGateway,
+            final TokenProvider tokenProvider,
+            final TokenHasher tokenHasher,
+            final TransactionManager transactionManager,
+            final JwtConfig jwtConfig
+    ) {
+        return new LoginSocialProviderUseCase(
+                userGateway,
+                sessionGateway,
+                userSocialLoginGateway,
+                socialProviderGateway,
+                tokenProvider,
+                tokenHasher,
+                transactionManager,
+                jwtConfig.getAccessTokenExpirationMs(),
+                jwtConfig.getRefreshTokenExpirationMs()
+        );
+    }
 //
 //    @Bean
 //    public SetupTwoFactorUseCase setupTwoFactorUseCase(

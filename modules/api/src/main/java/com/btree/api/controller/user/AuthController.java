@@ -1,6 +1,7 @@
 package com.btree.api.controller.user;
 
 import com.btree.api.dto.request.user.*;
+import com.btree.api.dto.response.user.LoginSocialResponse;
 import com.btree.api.dto.response.user.LoginUserResponse;
 import com.btree.api.dto.response.user.RefreshTokenResponse;
 import com.btree.api.dto.response.user.RegisterUserResponse;
@@ -10,6 +11,8 @@ import com.btree.application.usecase.user.auth.forgot_password.ForgotPasswordCom
 import com.btree.application.usecase.user.auth.forgot_password.ForgotPasswordUseCase;
 import com.btree.application.usecase.user.auth.login.LoginUserCommand;
 import com.btree.application.usecase.user.auth.login.LoginUserUseCase;
+import com.btree.application.usecase.user.auth.login_social_provider.LoginSocialProviderCommand;
+import com.btree.application.usecase.user.auth.login_social_provider.LoginSocialProviderUseCase;
 import com.btree.application.usecase.user.auth.logout.LogoutUserCommand;
 import com.btree.application.usecase.user.auth.logout.LogoutUserUseCase;
 import com.btree.application.usecase.user.auth.refresh_session.RefreshSessionCommand;
@@ -40,16 +43,9 @@ public class AuthController {
     private final LogoutUserUseCase _logoutUserUseCase;
     private final ForgotPasswordUseCase _forgotPasswordUseCase;
     private final ConfirmPasswordResetUseCase _confirmPasswordResetUseCase;
+    private final LoginSocialProviderUseCase _loginSocialProviderUseCase;
 
-    public AuthController(
-            final RegisterUserUseCase _registerUserUseCase,
-            final LoginUserUseCase _loginUserUseCase,
-            final VerifyEmailUseCase _verifyEmailUseCase,
-            final RefreshSessionUseCase _refreshSessionUseCase,
-            final LogoutUserUseCase _logoutUserUseCase,
-            final ForgotPasswordUseCase _forgotPasswordUseCase,
-            final ConfirmPasswordResetUseCase _confirmPasswordResetUseCase
-    ) {
+    public AuthController(RegisterUserUseCase _registerUserUseCase, LoginUserUseCase _loginUserUseCase, VerifyEmailUseCase _verifyEmailUseCase, RefreshSessionUseCase _refreshSessionUseCase, LogoutUserUseCase _logoutUserUseCase, ForgotPasswordUseCase _forgotPasswordUseCase, ConfirmPasswordResetUseCase _confirmPasswordResetUseCase, LoginSocialProviderUseCase _loginSocialProviderUseCase) {
         this._registerUserUseCase = _registerUserUseCase;
         this._loginUserUseCase = _loginUserUseCase;
         this._verifyEmailUseCase = _verifyEmailUseCase;
@@ -57,6 +53,7 @@ public class AuthController {
         this._logoutUserUseCase = _logoutUserUseCase;
         this._forgotPasswordUseCase = _forgotPasswordUseCase;
         this._confirmPasswordResetUseCase = _confirmPasswordResetUseCase;
+        this._loginSocialProviderUseCase = _loginSocialProviderUseCase;
     }
 
     @PostMapping("/register")
@@ -180,5 +177,35 @@ public class AuthController {
         this._confirmPasswordResetUseCase.execute(
                 new ConfirmPasswordResetCommand(request.token(), request.newPassword())
         ).getOrElseThrow(n -> DomainException.with(n.getErrors()));
+    }
+
+    @PostMapping("/social/{provider}")
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(
+            summary = "Login com provedor social",
+            description = "Autentica ou registra usuário via OAuth2/OIDC (ex: Google). "
+                    + "Cria conta automaticamente se o e-mail não existir."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Login social realizado com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Provedor não suportado"),
+            @ApiResponse(responseCode = "401", description = "Token social inválido ou expirado"),
+            @ApiResponse(responseCode = "403", description = "Conta desativada")
+    })
+    public LoginSocialResponse socialLogin(
+            @PathVariable final String provider,
+            @Valid @RequestBody final LoginSocialRequest request,
+            final HttpServletRequest httpRequest
+    ) {
+        final var input = new LoginSocialProviderCommand(
+                provider,
+                request.token(),
+                httpRequest.getRemoteAddr(),
+                httpRequest.getHeader("User-Agent")
+        );
+        return LoginSocialResponse.from(
+                _loginSocialProviderUseCase.execute(input)
+                        .getOrElseThrow(n -> DomainException.with(n.getErrors()))
+        );
     }
 }

@@ -202,7 +202,89 @@ if (body.accessToken) {
 
 ---
 
-### 3. Verificar E-mail
+### 3. Login Social (OAuth2)
+
+**`POST /v1/auth/social/{provider}`**
+
+Autentica um usuário via token OAuth2 de um provedor externo. Cria conta automaticamente se o e-mail ainda não existir, ou vincula ao usuário existente caso o e-mail já esteja cadastrado.
+
+**Provedores suportados:** `google` (case-insensitive)
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/auth/social/google
+Content-Type: application/json
+```
+
+```json
+{
+  "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjEx..."
+}
+```
+
+**Validações:**
+
+| Campo | Obrigatório | Restrições |
+|---|---|---|
+| `token` | Sim | ID token ou access token emitido pelo provedor OAuth2; não pode ser vazio |
+| `provider` (path) | Sim | Provedor OAuth2; atualmente apenas `google` |
+
+**Response `200 OK`:**
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "a9c3b2f1e8d7c6b5a4f3e2d1c0b9a8f7...",
+  "access_token_expires_at": "2026-04-18T12:15:00Z",
+  "user_id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "username": "joaosilva4829",
+  "email": "joao@gmail.com",
+  "roles": ["customer"]
+}
+```
+
+> **Comportamento por fluxo:**
+> - **Vínculo existente**: usuário já possui conta vinculada ao provedor → login direto.
+> - **E-mail existente, sem vínculo**: vincula o provedor ao usuário existente → login direto.
+> - **Usuário novo**: cria conta com `email_verified = true`, `password = null`, username derivado do perfil social (nome + sufixo de 4 dígitos aleatórios) e papel `customer`.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Campo `token` ausente ou em branco |
+| `400` | Provedor (`{provider}`) não suportado |
+| `401` | Token OAuth2 inválido ou expirado no provedor |
+| `403` | Conta desativada (`enabled = false`) |
+| `422` | Falha na validação do token pelo provedor (perfil não retornado) |
+| `500` | Erro interno inesperado durante a transação |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("access_token presente", () => {
+  pm.expect(body.access_token).to.be.a("string").and.not.be.empty;
+  pm.environment.set("access_token", body.access_token);
+});
+pm.test("refresh_token presente", () => {
+  pm.expect(body.refresh_token).to.be.a("string").and.not.be.empty;
+  pm.environment.set("refresh_token", body.refresh_token);
+});
+pm.test("user_id presente", () => {
+  pm.expect(body.user_id).to.be.a("string");
+  pm.environment.set("user_id", body.user_id);
+});
+pm.test("roles é array não-vazio", () => {
+  pm.expect(body.roles).to.be.an("array").and.not.be.empty;
+});
+```
+
+---
+
+### 4. Verificar E-mail
 
 **`POST /v1/auth/verify-email`**
 
@@ -239,7 +321,7 @@ pm.test("Body vazio", () => pm.expect(pm.response.text()).to.be.empty);
 
 ---
 
-### 4. Renovar Sessão (Token Rotation)
+### 5. Renovar Sessão (Token Rotation)
 
 **`POST /v1/auth/refresh`**
 
@@ -295,7 +377,7 @@ pm.test("Tokens atualizados", () => {
 
 ---
 
-### 5. Logout
+### 6. Logout
 
 **`POST /v1/auth/logout`**
 
@@ -332,7 +414,7 @@ pm.environment.unset("refresh_token");
 
 ---
 
-### 6. Solicitar Redefinição de Senha
+### 7. Solicitar Redefinição de Senha
 
 **`POST /v1/auth/password/forgot`**
 
@@ -368,7 +450,7 @@ pm.test("Status 200", () => pm.response.to.have.status(200));
 
 ---
 
-### 7. Confirmar Redefinição de Senha
+### 8. Confirmar Redefinição de Senha
 
 **`POST /v1/auth/password/reset`**
 
@@ -502,7 +584,16 @@ Execute as requests na seguinte ordem:
 3. **Verificar E-mail** com o token copiado
 4. **Login** → confirmar que `email_verified: true` no `/v1/users/me`
 
-### Fluxo 4: Recuperação de Senha
+### Fluxo 4: Login Social (Google)
+
+1. Obter um ID token válido do Google (via SDK do cliente ou `google-auth-library`)
+2. **Login Social** `POST /v1/auth/social/google` com o token → salva `access_token`, `refresh_token`, `user_id`
+3. **Obter Usuário Atual** `GET /v1/users/me` → confirmar `email_verified: true` e `roles: ["customer"]`
+4. Repetir o passo 2 com o mesmo token Google → deve retornar `200 OK` (vínculo já existente, login direto)
+5. Testar com `provider` inválido (ex: `/v1/auth/social/facebook`) → deve retornar `400`
+6. Testar com token expirado → deve retornar `401`
+
+### Fluxo 5: Recuperação de Senha
 
 1. **Solicitar Redefinição de Senha** com e-mail cadastrado
 2. Verificar retorno `200 OK` (body vazio)
