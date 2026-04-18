@@ -62,6 +62,8 @@ public class UserValidator extends Validator {
     }
 
     private void checkPasswordHash() {
+        // Social users have no password — null hash is valid for them
+        if (this.user.getPasswordHash() == null) return;
         validatePassword(this.user.getPasswordHash(), this.validationHandler());
     }
 

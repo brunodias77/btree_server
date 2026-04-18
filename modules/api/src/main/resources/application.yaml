@@ -62,7 +62,7 @@ security:
     secret: dev-encryption-secret-32-chars!!
     salt: deadbeefcafebabe
   google:
-    client-id: dev-google-client-id.apps.googleusercontent.com
+    client-id: ${GOOGLE_CLIENT_ID:43372376564-24mgtin7bva93gel4pjaig1jsa3hddnj.apps.googleusercontent.com}
 
 logging:
   level:
