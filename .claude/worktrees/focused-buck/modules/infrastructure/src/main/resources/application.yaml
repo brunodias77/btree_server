@@ -1,0 +1,89 @@
+spring:
+  application:
+    name: btree
+
+  datasource:
+    url: jdbc:postgresql://localhost:5439/btree_server
+    username: postgres
+    password: password
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: btree-pool
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: shared
+        format_sql: false
+        show_sql: false
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+    schemas: shared, users, catalog, cart, orders, payments, coupons
+    out-of-order: false
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+    time-zone: UTC
+
+  web:
+    cors:
+      allowed-origins: "http://localhost:3000"
+      allowed-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allowed-headers: "Content-Type,Authorization,X-Requested-With"
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+minio:
+  url: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket: btree-uploads
+  public-url: http://localhost:9000
+
+security:
+  jwt:
+    secret: test-jwt-secret-that-is-long-enough-for-hs256-algorithm-minimum-256-bits
+    access-token-expiration-ms: 900000
+    refresh-token-expiration-ms: 604800000
+  encryption:
+    secret: test-encryption-secret-32-chars!!
+    salt: deadbeefcafebabe
+  google:
+    client-id: test-google-client-id.apps.googleusercontent.com
+
+logging:
+  level:
+    root: INFO
+    com.btree: DEBUG
+    org.springframework.security: INFO
+    org.flywaydb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true

@@ -1,0 +1,17 @@
+minio:
+  url: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket: btree-uploads
+  public-url: http://localhost:9000
+
+security:
+  jwt:
+    secret: test-jwt-secret-that-is-long-enough-for-hs256-algorithm-minimum-256-bits
+    access-token-expiration-ms: 900000
+    refresh-token-expiration-ms: 604800000
+  encryption:
+    secret: test-encryption-secret-32-chars!!
+    salt: deadbeefcafebabe
+  google:
+    client-id: test-google-client-id.apps.googleusercontent.com

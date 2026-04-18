@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import static org.springframework.security.config.Customizer.withDefaults;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -135,25 +136,29 @@ public class SecurityConfig {
             final AccessDeniedHandler accessDeniedHandler
     ) throws Exception {
         http
-                // 1. Desativa CSRF: sem cookies de sessão, ataques CSRF são inviáveis em APIs JWT.
+                // 1. Delega CORS ao WebMvcConfig (CorsProperties), necessário para Spring Security
+                //    processar preflights OPTIONS antes do filtro JWT.
+                .cors(withDefaults())
+
+                // 2. Desativa CSRF: sem cookies de sessão, ataques CSRF são inviáveis em APIs JWT.
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // 2. Sem sessão de servidor: cada requisição deve provar sua identidade via JWT.
+                // 3. Sem sessão de servidor: cada requisição deve provar sua identidade via JWT.
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // 3. Libera PUBLIC_ROUTES sem autenticação; bloqueia todo o restante.
+                // 4. Libera PUBLIC_ROUTES sem autenticação; bloqueia todo o restante.
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_ROUTES).permitAll()
                         .anyRequest().authenticated()         // regra catch-all: tudo mais exige auth
                 )
 
-                // 4. Handlers de erro: 401 para não autenticados, 403 para sem permissão.
+                // 5. Handlers de erro: 401 para não autenticados, 403 para sem permissão.
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler)
                 )
 
-                // 5. Filtro JWT roda antes do filtro padrão de usuário/senha do Spring Security.
+                // 6. Filtro JWT roda antes do filtro padrão de usuário/senha do Spring Security.
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

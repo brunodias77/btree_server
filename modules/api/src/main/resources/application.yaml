@@ -6,6 +6,12 @@ server:
     include-message: never
     include-binding-errors: never
 
+cors:
+  allowed-origins:
+    - "http://localhost:3000"
+    - "http://localhost:4200"
+  max-age: 3600
+
 spring:
   application:
     name: btree
