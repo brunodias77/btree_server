@@ -48,7 +48,7 @@ public class UserController {
         final Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         final String userId = auth.getName();
 
-        final GetCurrentUserOutput output = _getCurrentUserUseCase
+        final GetCurrentUserOutput output = getCurrentUserUseCase
                 .execute(new GetCurrentUserInput(userId))
                 .getOrElseThrow(n -> DomainException.with(n.getErrors()));
 

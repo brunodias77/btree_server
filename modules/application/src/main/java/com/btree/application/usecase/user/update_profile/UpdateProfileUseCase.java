@@ -55,8 +55,9 @@ public class UpdateProfileUseCase implements UseCase<UpdateProfileCommand, Updat
 
         // verificar unicidade de CPF (se fornecido)
         final var cpf = updateProfileCommand.cpf();
-        if(cpf != null && cpf.isBlank()){
-            if(this.profileGateway.existsByCpfAndNotUserId(cpf, userId)){
+        final var normalizedCpf = cpf != null && cpf.isBlank() ? null : cpf;
+        if(normalizedCpf != null){
+            if(this.profileGateway.existsByCpfAndNotUserId(normalizedCpf, userId)){
                 notification.append(ProfileError.CPF_ALREADY_IN_USE);
             }
         }
@@ -69,7 +70,7 @@ public class UpdateProfileUseCase implements UseCase<UpdateProfileCommand, Updat
         profile.updatePersonalData(
                 updateProfileCommand.firtName(),
                 updateProfileCommand.lastName(),
-                cpf != null && cpf.isBlank() ? null : cpf,
+                normalizedCpf,
                 updateProfileCommand.birthDate(),
                 updateProfileCommand.gender(),
                 updateProfileCommand.preferredLanguage(),
@@ -78,6 +79,7 @@ public class UpdateProfileUseCase implements UseCase<UpdateProfileCommand, Updat
         );
 
         // validar invariantes apos mutacao
+        profile.validate(notification);
         if(notification.hasError()){
             return Left(notification);
         }

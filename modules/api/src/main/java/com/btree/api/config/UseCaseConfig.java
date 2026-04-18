@@ -131,19 +131,12 @@ public class UseCaseConfig {
         return new LogoutUserUseCase(sessionGateway, tokenHasher, transactionManager);
     }
 
-//    @Bean
-//    public LogoutAllSessionsUseCase logoutAllSessionsUseCase(
-//            final SessionGateway sessionGateway,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new LogoutAllSessionsUseCase(sessionGateway, transactionManager);
-//    }
-//
+
     @Bean
     public GetCurrentUserUseCase getCurrentUserUseCase(final UserGateway userGateway) {
         return new GetCurrentUserUseCase(userGateway);
     }
-//
+
     @Bean
     public ForgotPasswordUseCase forgotPasswordUseCase(
             final UserGateway userGateway,
@@ -174,7 +167,7 @@ public class UseCaseConfig {
         );
     }
 
-//
+
     @Bean
     public LoginSocialProviderUseCase loginWithSocialProviderUseCase(
             final UserGateway userGateway,
@@ -249,6 +242,24 @@ public class UseCaseConfig {
                 jwtConfig.getRefreshTokenExpirationMs()
         );
     }
+
+    @Bean
+    public UpdateProfileUseCase updateProfileUseCase(
+            final ProfileGateway profileGateway,
+            final TransactionManager transactionManager
+    ) {
+        return new UpdateProfileUseCase(profileGateway, transactionManager);
+    }
+
+//    @Bean
+//    public LogoutAllSessionsUseCase logoutAllSessionsUseCase(
+//            final SessionGateway sessionGateway,
+//            final TransactionManager transactionManager
+//    ) {
+//        return new LogoutAllSessionsUseCase(sessionGateway, transactionManager);
+//    }
+//
+
 //
 //    @Bean
 //    public CleanupExpiredTokensUseCase cleanupExpiredTokensUseCase(
@@ -263,13 +274,7 @@ public class UseCaseConfig {
 //        return new GetProfileUseCase(profileGateway);
 //    }
 //
-    @Bean
-    public UpdateProfileUseCase updateProfileUseCase(
-            final ProfileGateway profileGateway,
-            final TransactionManager transactionManager
-    ) {
-        return new UpdateProfileUseCase(profileGateway, transactionManager);
-    }
+
 //
 //    @Bean
 //    public AddAddressUseCase addAddressUseCase(
