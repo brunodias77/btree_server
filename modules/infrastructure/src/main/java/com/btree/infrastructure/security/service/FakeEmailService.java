@@ -3,6 +3,7 @@ package com.btree.infrastructure.security.service;
 import com.btree.shared.contract.EmailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -15,6 +16,12 @@ import org.springframework.stereotype.Component;
 public class FakeEmailService implements EmailService {
 
     private static final Logger log = LoggerFactory.getLogger(FakeEmailService.class);
+
+    private final String frontendUrl;
+
+    public FakeEmailService(@Value("${app.frontend-url}") final String frontendUrl) {
+        this.frontendUrl = frontendUrl;
+    }
 
     @Override
     public void sendEmailVerification(
@@ -48,6 +55,7 @@ public class FakeEmailService implements EmailService {
             final String username,
             final String rawToken
     ) {
+        final var resetLink = frontendUrl + "/reset-password?token=" + rawToken;
         log.info("""
 
                 ╔══════════════════════════════════════════════════════════╗
@@ -58,13 +66,13 @@ public class FakeEmailService implements EmailService {
                 ║
                 ║  Olá, {}!
                 ║
-                ║  Use o token abaixo para redefinir sua senha:
+                ║  Clique no link abaixo para redefinir sua senha:
                 ║
-                ║  TOKEN: {}
+                ║  {}
                 ║
-                ║  (Válido por 30 minutos)
+                ║  (Válido por 30 minutos — uso único)
                 ╚══════════════════════════════════════════════════════════╝
                 """,
-                toEmail, username, rawToken);
+                toEmail, username, resetLink);
     }
 }
