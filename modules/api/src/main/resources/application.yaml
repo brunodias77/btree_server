@@ -12,6 +12,9 @@ cors:
     - "http://localhost:4200"
   max-age: 3600
 
+app:
+  frontend-url: "http://localhost:4200"
+
 spring:
   application:
     name: btree
