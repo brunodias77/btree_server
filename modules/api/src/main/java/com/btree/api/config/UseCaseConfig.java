@@ -15,6 +15,7 @@ import com.btree.application.usecase.user.auth.setup_two_factor.SetupTwoFactorUs
 import com.btree.application.usecase.user.auth.verify_email.VerifyEmailUseCase;
 import com.btree.application.usecase.user.auth.verify_two_factor.VerifyTwoFactorUseCase;
 import com.btree.application.usecase.user.get_current_user.GetCurrentUserUseCase;
+import com.btree.application.usecase.user.update_profile.UpdateProfileUseCase;
 import com.btree.domain.user.gateway.*;
 import com.btree.infrastructure.config.JwtConfig;
 import com.btree.shared.contract.*;
@@ -262,13 +263,13 @@ public class UseCaseConfig {
 //        return new GetProfileUseCase(profileGateway);
 //    }
 //
-//    @Bean
-//    public UpdateProfileUseCase updateProfileUseCase(
-//            final ProfileGateway profileGateway,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new UpdateProfileUseCase(profileGateway, transactionManager);
-//    }
+    @Bean
+    public UpdateProfileUseCase updateProfileUseCase(
+            final ProfileGateway profileGateway,
+            final TransactionManager transactionManager
+    ) {
+        return new UpdateProfileUseCase(profileGateway, transactionManager);
+    }
 //
 //    @Bean
 //    public AddAddressUseCase addAddressUseCase(
