@@ -30,5 +30,20 @@ public interface UserTokenJpaRepository extends JpaRepository<UserTokenJpaEntity
         )
         """, nativeQuery = true)
     int deleteExpiredBatch(@Param("now") Instant now, @Param("batchSize") int batchSize);
+
+    @Modifying
+    @Query(value = """
+        UPDATE users.user_tokens
+        SET used_at = :now
+        WHERE user_id = :userId
+          AND token_type = :tokenType
+          AND used_at IS NULL
+          AND expires_at > :now
+        """, nativeQuery = true)
+    int markActiveAsUsedByUserIdAndType(
+            @Param("userId") UUID userId,
+            @Param("tokenType") String tokenType,
+            @Param("now") Instant now
+    );
 }
 

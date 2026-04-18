@@ -12,6 +12,8 @@ Crie um Environment no Postman chamado **btree-local** com as seguintes variáve
 | `access_token` | _(vazio)_ | Preenchido automaticamente após login |
 | `refresh_token` | _(vazio)_ | Preenchido automaticamente após login |
 | `user_id` | _(vazio)_ | Preenchido automaticamente após login |
+| `transaction_id` | _(vazio)_ | Preenchido automaticamente quando login detecta 2FA ativo |
+| `setup_token_id` | _(vazio)_ | Preenchido automaticamente durante configuração de 2FA |
 
 ### Authorization Global
 
@@ -167,16 +169,15 @@ Content-Type: application/json
 
 ```json
 {
-  "accessToken": null,
-  "refreshToken": null,
-  "accessTokenExpiresAt": null,
   "userId": "019600a1-b2c3-7d4e-a5f6-789012345678",
   "username": "joao_silva",
   "email": "joao@exemplo.com",
   "requiresTwoFactor": true,
-  "transactionId": "tx_abc123def456"
+  "transactionId": "019600a1-ffff-7d4e-a5f6-abcdef012345"
 }
 ```
+
+> Os campos `accessToken`, `refreshToken` e `accessTokenExpiresAt` são omitidos quando 2FA está ativo (`@JsonInclude(NON_NULL)`). Use o `transactionId` para chamar `POST /v1/auth/2fa/verify`.
 
 **Cenários de Erro:**
 
@@ -196,6 +197,12 @@ if (body.accessToken) {
   pm.environment.set("user_id", body.userId);
   pm.test("Tokens salvos no environment", () => {
     pm.expect(pm.environment.get("access_token")).to.not.be.empty;
+  });
+} else if (body.requiresTwoFactor) {
+  pm.environment.set("transaction_id", body.transactionId);
+  pm.environment.set("user_id", body.userId);
+  pm.test("transactionId salvo para 2FA", () => {
+    pm.expect(pm.environment.get("transaction_id")).to.not.be.empty;
   });
 }
 ```
@@ -495,6 +502,186 @@ pm.test("Body vazio", () => pm.expect(pm.response.text()).to.be.empty);
 
 ---
 
+### 9. Iniciar Configuração de 2FA
+
+**`POST /v1/auth/2fa/setup`**
+
+Gera um secret TOTP e retorna a URI do QR Code para configuração no app autenticador. O secret fica válido por **15 minutos** — use `/2fa/enable` neste prazo.
+
+> **Requer autenticação:** `Authorization: Bearer {{access_token}}`
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/auth/2fa/setup
+Authorization: Bearer {{access_token}}
+```
+
+Body vazio.
+
+**Response `200 OK`:**
+
+```json
+{
+  "setup_token_id": "019600a1-aaaa-7d4e-a5f6-111111111111",
+  "secret": "JBSWY3DPEHPK3PXP",
+  "qr_code_uri": "otpauth://totp/BTree:joao@exemplo.com?secret=JBSWY3DPEHPK3PXP&issuer=BTree&algorithm=SHA1&digits=6&period=30"
+}
+```
+
+| Campo | Descrição |
+|---|---|
+| `setup_token_id` | ID do token de setup — necessário para `/2fa/enable` |
+| `secret` | Secret Base32 para entrada manual no app autenticador |
+| `qr_code_uri` | URI `otpauth://` — codifique em QR Code para escaneamento |
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `401` | Token JWT ausente ou inválido |
+| `409` | 2FA já está ativado para este usuário |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("setup_token_id presente", () => {
+  pm.expect(body.setup_token_id).to.be.a("string").and.not.be.empty;
+  pm.environment.set("setup_token_id", body.setup_token_id);
+});
+pm.test("secret presente", () => pm.expect(body.secret).to.be.a("string").and.not.be.empty);
+pm.test("qr_code_uri começa com otpauth://", () => pm.expect(body.qr_code_uri).to.include("otpauth://totp/"));
+```
+
+---
+
+### 10. Confirmar Ativação de 2FA
+
+**`POST /v1/auth/2fa/enable`**
+
+Valida o código TOTP gerado pelo app autenticador e ativa o 2FA permanentemente na conta.
+
+> **Requer autenticação:** `Authorization: Bearer {{access_token}}`  
+> **Pré-requisito:** Chamada prévia a `/2fa/setup` nos últimos 15 minutos.
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/auth/2fa/enable
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+```
+
+```json
+{
+  "setup_token_id": "{{setup_token_id}}",
+  "code": "123456"
+}
+```
+
+**Validações:**
+
+| Campo | Obrigatório | Restrições |
+|---|---|---|
+| `setup_token_id` | Sim | UUID do token retornado por `/2fa/setup` |
+| `code` | Sim | Exatamente 6 dígitos numéricos |
+
+**Response `204 No Content`:** Body vazio.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | `setup_token_id` ou `code` ausentes / formato inválido |
+| `401` | Token JWT ausente ou inválido |
+| `422` | Token de setup expirado, já utilizado, tipo incorreto ou código TOTP inválido |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 204", () => pm.response.to.have.status(204));
+pm.test("Body vazio", () => pm.expect(pm.response.text()).to.be.empty);
+pm.environment.unset("setup_token_id");
+```
+
+---
+
+### 11. Verificar Código 2FA (segunda etapa do login)
+
+**`POST /v1/auth/2fa/verify`**
+
+Segunda etapa do login quando 2FA está ativo. Recebe o `transactionId` obtido no login e o código TOTP do app autenticador. Retorna os tokens finais de acesso.
+
+> **Endpoint público** — não requer JWT. O `transactionId` é o mecanismo de autorização desta etapa.  
+> O token de transação expira em **5 minutos** após o login.
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/auth/2fa/verify
+Content-Type: application/json
+```
+
+```json
+{
+  "transactionId": "{{transaction_id}}",
+  "code": "123456"
+}
+```
+
+**Validações:**
+
+| Campo | Obrigatório | Restrições |
+|---|---|---|
+| `transactionId` | Sim | UUID retornado pelo login quando `requiresTwoFactor: true` |
+| `code` | Sim | Exatamente 6 dígitos numéricos |
+
+**Response `200 OK`:**
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "refreshToken": "a9c3b2f1e8d7c6b5a4f3e2d1c0b9a8f7...",
+  "accessTokenExpiresAt": "2026-04-18T12:20:00Z",
+  "userId": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "username": "joao_silva",
+  "email": "joao@exemplo.com"
+}
+```
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | `transactionId` ou `code` ausentes / formato inválido |
+| `401` | Código TOTP inválido, `transactionId` não encontrado, expirado ou já utilizado; conta bloqueada |
+| `403` | Conta desativada |
+
+> **Proteção brute-force:** Após **5 códigos errados** a conta é bloqueada por **15 minutos**. O bloqueio compartilha o mesmo contador do login (tentativas de senha + TOTP somadas).
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("accessToken presente", () => {
+  pm.expect(body.accessToken).to.be.a("string").and.not.be.empty;
+  pm.environment.set("access_token", body.accessToken);
+});
+pm.test("refreshToken presente", () => {
+  pm.expect(body.refreshToken).to.be.a("string").and.not.be.empty;
+  pm.environment.set("refresh_token", body.refreshToken);
+});
+pm.test("userId confere", () => {
+  pm.expect(body.userId).to.equal(pm.environment.get("user_id"));
+});
+pm.environment.unset("transaction_id");
+```
+
+---
+
 ## Contexto: Users
 
 **Base path:** `/v1/users`  
@@ -601,6 +788,37 @@ Execute as requests na seguinte ordem:
 4. Copiar token do e-mail recebido (ou do log do servidor em dev)
 5. **Confirmar Redefinição de Senha** com o token e a nova senha
 6. **Login** com a nova senha → confirmar acesso restaurado
+
+### Fluxo 6: Ativar 2FA
+
+> Pré-requisito: usuário registrado e com sessão ativa (`access_token` no environment).
+
+1. **Iniciar Configuração 2FA** `POST /v1/auth/2fa/setup`
+   - Salva `setup_token_id` no environment
+   - Abre o `qr_code_uri` em um gerador de QR Code (ex: `qr-code-generator.com`) ou insere o `secret` manualmente no app autenticador (Google Authenticator, Authy, etc.)
+2. No app autenticador, aguarda o código de 6 dígitos aparecer
+3. **Confirmar Ativação 2FA** `POST /v1/auth/2fa/enable`
+   - Body: `{ "setup_token_id": "{{setup_token_id}}", "code": "<código do app>" }`
+   - Deve retornar `204 No Content`
+4. **Login** `POST /v1/auth/login` → deve retornar `requiresTwoFactor: true` e `transactionId` (sem tokens)
+5. Testar nova chamada ao `/2fa/setup` → deve retornar `409 Conflict` (2FA já ativo)
+
+### Fluxo 7: Login com 2FA Ativo
+
+> Pré-requisito: conta com 2FA ativado (Fluxo 6 concluído).
+
+1. **Login** `POST /v1/auth/login` com credenciais corretas
+   - Resposta: `requiresTwoFactor: true`, `transactionId` salvo no environment
+   - **Sem** `accessToken` na resposta
+2. No app autenticador, obter código TOTP atual (válido por 30 s, tolerância de ±1 período)
+3. **Verificar Código 2FA** `POST /v1/auth/2fa/verify`
+   - Body: `{ "transactionId": "{{transaction_id}}", "code": "<código do app>" }`
+   - Deve retornar `200 OK` com `accessToken`, `refreshToken`
+   - Scripts salvam tokens no environment automaticamente
+4. **Obter Usuário Atual** `GET /v1/users/me` → confirmar acesso com o novo token
+5. **Testar brute-force:** repetir `/2fa/verify` com código errado 5 vezes
+   - Após 5 tentativas: próxima chamada deve retornar `401` com mensagem de conta bloqueada
+   - Aguardar 15 minutos (ou ajustar `lock_expires_at` no banco em ambiente dev) para desbloquear
 
 ---
 

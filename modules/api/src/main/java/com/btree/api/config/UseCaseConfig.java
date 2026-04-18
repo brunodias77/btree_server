@@ -4,13 +4,16 @@ import com.btree.application.usecase.job.clean_expired_tokens.CleanupExpiredToke
 import com.btree.application.usecase.job.process_domain_event.ProcessDomainEventsJob;
 import com.btree.application.usecase.job.retry_failed_event.RetryFailedEventsJob;
 import com.btree.application.usecase.user.auth.confirm_password_reset.ConfirmPasswordResetUseCase;
+import com.btree.application.usecase.user.auth.enable_two_factor.EnableTwoFactorUseCase;
 import com.btree.application.usecase.user.auth.forgot_password.ForgotPasswordUseCase;
 import com.btree.application.usecase.user.auth.login.LoginUserUseCase;
 import com.btree.application.usecase.user.auth.login_social_provider.LoginSocialProviderUseCase;
 import com.btree.application.usecase.user.auth.logout.LogoutUserUseCase;
 import com.btree.application.usecase.user.auth.refresh_session.RefreshSessionUseCase;
 import com.btree.application.usecase.user.auth.register.RegisterUserUseCase;
+import com.btree.application.usecase.user.auth.setup_two_factor.SetupTwoFactorUseCase;
 import com.btree.application.usecase.user.auth.verify_email.VerifyEmailUseCase;
+import com.btree.application.usecase.user.auth.verify_two_factor.VerifyTwoFactorUseCase;
 import com.btree.application.usecase.user.get_current_user.GetCurrentUserUseCase;
 import com.btree.domain.user.gateway.*;
 import com.btree.infrastructure.config.JwtConfig;
@@ -194,54 +197,57 @@ public class UseCaseConfig {
                 jwtConfig.getRefreshTokenExpirationMs()
         );
     }
-//
-//    @Bean
-//    public SetupTwoFactorUseCase setupTwoFactorUseCase(
-//            final UserGateway userGateway,
-//            final UserTokenGateway userTokenGateway,
-//            final TotpGateway totpGateway
-//    ) {
-//        return new SetupTwoFactorUseCase(userGateway, userTokenGateway, totpGateway);
-//    }
-//
-//    @Bean
-//    public EnableTwoFactorUseCase enableTwoFactorUseCase(
-//            final UserGateway userGateway,
-//            final UserTokenGateway userTokenGateway,
-//            final TotpGateway totpGateway,
-//            final TransactionManager transactionManager,
-//            final DomainEventPublisher eventPublisher
-//    ) {
-//        return new EnableTwoFactorUseCase(userGateway, userTokenGateway, totpGateway, transactionManager, eventPublisher);
-//    }
-//
-//    @Bean
-//    public VerifyTwoFactorUseCase verifyTwoFactorUseCase(
-//            final UserTokenGateway userTokenGateway,
-//            final UserGateway userGateway,
-//            final SessionGateway sessionGateway,
-//            final LoginHistoryGateway loginHistoryGateway,
-//            final TotpGateway totpGateway,
-//            final TokenProvider tokenProvider,
-//            final TokenHasher tokenHasher,
-//            final TransactionManager transactionManager,
-//            final DomainEventPublisher eventPublisher,
-//            final JwtConfig jwtConfig
-//    ) {
-//        return new VerifyTwoFactorUseCase(
-//                userTokenGateway,
-//                userGateway,
-//                sessionGateway,
-//                loginHistoryGateway,
-//                totpGateway,
-//                tokenProvider,
-//                tokenHasher,
-//                transactionManager,
-//                eventPublisher,
-//                jwtConfig.getAccessTokenExpirationMs(),
-//                jwtConfig.getRefreshTokenExpirationMs()
-//        );
-//    }
+
+    @Bean
+    public SetupTwoFactorUseCase setupTwoFactorUseCase(
+            final UserGateway userGateway,
+            final UserTokenGateway userTokenGateway,
+            final TotpGateway totpGateway,
+            final StringEncryptor stringEncryptor,
+            final TransactionManager transactionManager
+    ) {
+        return new SetupTwoFactorUseCase(userGateway, userTokenGateway, totpGateway, stringEncryptor, transactionManager);
+    }
+
+    @Bean
+    public EnableTwoFactorUseCase enableTwoFactorUseCase(
+            final UserGateway userGateway,
+            final UserTokenGateway userTokenGateway,
+            final TotpGateway totpGateway,
+            final StringEncryptor stringEncryptor,
+            final TransactionManager transactionManager,
+            final DomainEventPublisher eventPublisher
+    ) {
+        return new EnableTwoFactorUseCase(userGateway, userTokenGateway, totpGateway, stringEncryptor, transactionManager, eventPublisher);
+    }
+
+    @Bean
+    public VerifyTwoFactorUseCase verifyTwoFactorUseCase(
+            final UserTokenGateway userTokenGateway,
+            final UserGateway userGateway,
+            final SessionGateway sessionGateway,
+            final LoginHistoryGateway loginHistoryGateway,
+            final TotpGateway totpGateway,
+            final TokenProvider tokenProvider,
+            final TokenHasher tokenHasher,
+            final TransactionManager transactionManager,
+            final DomainEventPublisher eventPublisher,
+            final JwtConfig jwtConfig
+    ) {
+        return new VerifyTwoFactorUseCase(
+                userTokenGateway,
+                userGateway,
+                sessionGateway,
+                loginHistoryGateway,
+                totpGateway,
+                tokenProvider,
+                tokenHasher,
+                transactionManager,
+                eventPublisher,
+                jwtConfig.getAccessTokenExpirationMs(),
+                jwtConfig.getRefreshTokenExpirationMs()
+        );
+    }
 //
 //    @Bean
 //    public CleanupExpiredTokensUseCase cleanupExpiredTokensUseCase(
