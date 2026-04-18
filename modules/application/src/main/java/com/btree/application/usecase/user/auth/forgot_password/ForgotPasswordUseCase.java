@@ -1,4 +1,7 @@
-package com.btree.application.usecase.user.auth.reset_password;
+package com.btree.application.usecase.user.auth.forgot_password;
+
+import com.btree.shared.usecase.UnitUseCase;
+import com.btree.shared.validation.Notification;
 
 import com.btree.domain.user.entity.UserToken;
 import com.btree.domain.user.error.UserError;
@@ -43,7 +46,7 @@ import static io.vavr.API.Try;
  *   <li>Publica domain events e envia e-mail</li>
  * </ol>
  */
-public class ResetPasswordUseCase implements UnitUseCase<ResetPasswordCommand> {
+public class ForgotPasswordUseCase implements UnitUseCase<ForgotPasswordCommand> {
 
     private static final Duration TOKEN_EXPIRATION = Duration.ofMinutes(30);
 
@@ -54,7 +57,7 @@ public class ResetPasswordUseCase implements UnitUseCase<ResetPasswordCommand> {
     private final DomainEventPublisher eventPublisher;
     private final TransactionManager transactionManager;
 
-    public ResetPasswordUseCase(UserGateway userGateway, UserTokenGateway userTokenGateway, TokenHasher tokenHasher, EmailService emailService, DomainEventPublisher eventPublisher, TransactionManager transactionManager) {
+    public ForgotPasswordUseCase(UserGateway userGateway, UserTokenGateway userTokenGateway, TokenHasher tokenHasher, EmailService emailService, DomainEventPublisher eventPublisher, TransactionManager transactionManager) {
         this.userGateway = userGateway;
         this.userTokenGateway = userTokenGateway;
         this.tokenHasher = tokenHasher;
@@ -63,20 +66,18 @@ public class ResetPasswordUseCase implements UnitUseCase<ResetPasswordCommand> {
         this.transactionManager = transactionManager;
     }
 
-
     @Override
-    public Either<Notification, Void> execute(ResetPasswordCommand resetPasswordCommand) {
-
+    public Either<Notification, Void> execute(ForgotPasswordCommand forgotPasswordCommand) {
         final var notification = Notification.create();
 
         // validar presenca do email
-        if(resetPasswordCommand.email() == null || resetPasswordCommand.email().isBlank()){
+        if(forgotPasswordCommand.email() == null || forgotPasswordCommand.email().isBlank()){
             notification.append(UserError.EMAIL_EMPTY);
             return Left(notification);
         }
 
         // buscar usuario - antienumeration: retorna sucesso se nao encontrado/inativo
-        final var userOpt = this.userGateway.findByEmail(resetPasswordCommand.email().toLowerCase());
+        final var userOpt = this.userGateway.findByEmail(forgotPasswordCommand.email().toLowerCase());
         if(userOpt.isEmpty() || !userOpt.get().isEnabled()){
             return Right(null);
         }

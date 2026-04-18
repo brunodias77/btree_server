@@ -4,6 +4,8 @@ import com.btree.api.dto.request.user.*;
 import com.btree.api.dto.response.user.LoginUserResponse;
 import com.btree.api.dto.response.user.RefreshTokenResponse;
 import com.btree.api.dto.response.user.RegisterUserResponse;
+import com.btree.application.usecase.user.auth.forgot_password.ForgotPasswordCommand;
+import com.btree.application.usecase.user.auth.forgot_password.ForgotPasswordUseCase;
 import com.btree.application.usecase.user.auth.login.LoginUserCommand;
 import com.btree.application.usecase.user.auth.login.LoginUserUseCase;
 import com.btree.application.usecase.user.auth.logout.LogoutUserCommand;
@@ -12,8 +14,6 @@ import com.btree.application.usecase.user.auth.refresh_session.RefreshSessionCom
 import com.btree.application.usecase.user.auth.refresh_session.RefreshSessionUseCase;
 import com.btree.application.usecase.user.auth.register.RegisterUserCommand;
 import com.btree.application.usecase.user.auth.register.RegisterUserUseCase;
-import com.btree.application.usecase.user.auth.reset_password.ResetPasswordCommand;
-import com.btree.application.usecase.user.auth.reset_password.ResetPasswordUseCase;
 import com.btree.application.usecase.user.auth.verify_email.VerifyEmailCommand;
 import com.btree.application.usecase.user.auth.verify_email.VerifyEmailUseCase;
 import com.btree.shared.domain.DomainException;
@@ -36,15 +36,15 @@ public class AuthController {
     private final VerifyEmailUseCase _verifyEmailUseCase;
     private final RefreshSessionUseCase _refreshSessionUseCase;
     private final LogoutUserUseCase _logoutUserUseCase;
-    private final ResetPasswordUseCase _resetPasswordUseCase;
+    private final ForgotPasswordUseCase _forgotPasswordUseCase;
 
-    public AuthController(RegisterUserUseCase _registerUserUseCase, LoginUserUseCase _loginUserUseCase, VerifyEmailUseCase _verifyEmailUseCase, RefreshSessionUseCase _refreshSessionUseCase, LogoutUserUseCase _logoutUserUseCase, ResetPasswordUseCase _resetPasswordUseCase) {
+    public AuthController(RegisterUserUseCase _registerUserUseCase, LoginUserUseCase _loginUserUseCase, VerifyEmailUseCase _verifyEmailUseCase, RefreshSessionUseCase _refreshSessionUseCase, LogoutUserUseCase _logoutUserUseCase, ForgotPasswordUseCase _forgotPasswordUseCase) {
         this._registerUserUseCase = _registerUserUseCase;
         this._loginUserUseCase = _loginUserUseCase;
         this._verifyEmailUseCase = _verifyEmailUseCase;
         this._refreshSessionUseCase = _refreshSessionUseCase;
         this._logoutUserUseCase = _logoutUserUseCase;
-        this._resetPasswordUseCase = _resetPasswordUseCase;
+        this._forgotPasswordUseCase = _forgotPasswordUseCase;
     }
 
     @PostMapping("/register")
@@ -148,8 +148,8 @@ public class AuthController {
             @ApiResponse(responseCode = "200", description = "Solicitação processada"),
             @ApiResponse(responseCode = "422", description = "E-mail ausente ou com formato inválido")
     })
-    public void forgotPassword(@Valid @RequestBody final ResetPasswordRequest request) {
-        this._resetPasswordUseCase.execute(new ResetPasswordCommand(request.email()))
+    public void forgotPassword(@Valid @RequestBody final ForgotPasswordRequest request) {
+        this._forgotPasswordUseCase.execute(new ForgotPasswordCommand(request.email()))
                 .getOrElseThrow(n -> DomainException.with(n.getErrors()));
     }
 
