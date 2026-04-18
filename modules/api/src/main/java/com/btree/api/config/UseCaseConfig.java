@@ -7,6 +7,7 @@ import com.btree.application.usecase.user.auth.login.LoginUserUseCase;
 import com.btree.application.usecase.user.auth.logout.LogoutUserUseCase;
 import com.btree.application.usecase.user.auth.refresh_session.RefreshSessionUseCase;
 import com.btree.application.usecase.user.auth.register.RegisterUserUseCase;
+import com.btree.application.usecase.user.auth.reset_password.ResetPasswordUseCase;
 import com.btree.application.usecase.user.auth.verify_email.VerifyEmailUseCase;
 import com.btree.application.usecase.user.get_current_user.GetCurrentUserUseCase;
 import com.btree.domain.user.gateway.LoginHistoryGateway;
@@ -140,20 +141,20 @@ public class UseCaseConfig {
         return new GetCurrentUserUseCase(userGateway);
     }
 //
-//    @Bean
-//    public RequestPasswordResetUseCase requestPasswordResetUseCase(
-//            final UserGateway userGateway,
-//            final UserTokenGateway userTokenGateway,
-//            final TokenHasher tokenHasher,
-//            final EmailService emailService,
-//            final DomainEventPublisher eventPublisher,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new RequestPasswordResetUseCase(
-//                userGateway, userTokenGateway, tokenHasher,
-//                emailService, eventPublisher, transactionManager
-//        );
-//    }
+    @Bean
+    public ResetPasswordUseCase requestPasswordUseCase(
+            final UserGateway userGateway,
+            final UserTokenGateway userTokenGateway,
+            final TokenHasher tokenHasher,
+            final EmailService emailService,
+            final DomainEventPublisher eventPublisher,
+            final TransactionManager transactionManager
+    ) {
+        return new ResetPasswordUseCase(
+                userGateway, userTokenGateway, tokenHasher,
+                emailService, eventPublisher, transactionManager
+        );
+    }
 //
 //    @Bean
 //    public LoginWithSocialProviderUseCase loginWithSocialProviderUseCase(

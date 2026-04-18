@@ -12,6 +12,8 @@ import com.btree.application.usecase.user.auth.refresh_session.RefreshSessionCom
 import com.btree.application.usecase.user.auth.refresh_session.RefreshSessionUseCase;
 import com.btree.application.usecase.user.auth.register.RegisterUserCommand;
 import com.btree.application.usecase.user.auth.register.RegisterUserUseCase;
+import com.btree.application.usecase.user.auth.reset_password.ResetPasswordCommand;
+import com.btree.application.usecase.user.auth.reset_password.ResetPasswordUseCase;
 import com.btree.application.usecase.user.auth.verify_email.VerifyEmailCommand;
 import com.btree.application.usecase.user.auth.verify_email.VerifyEmailUseCase;
 import com.btree.shared.domain.DomainException;
@@ -34,13 +36,15 @@ public class AuthController {
     private final VerifyEmailUseCase _verifyEmailUseCase;
     private final RefreshSessionUseCase _refreshSessionUseCase;
     private final LogoutUserUseCase _logoutUserUseCase;
+    private final ResetPasswordUseCase _resetPasswordUseCase;
 
-    public AuthController(RegisterUserUseCase _registerUserUseCase, LoginUserUseCase _loginUserUseCase, VerifyEmailUseCase _verifyEmailUseCase, RefreshSessionUseCase _refreshSessionUseCase, LogoutUserUseCase _logoutUserUseCase) {
+    public AuthController(RegisterUserUseCase _registerUserUseCase, LoginUserUseCase _loginUserUseCase, VerifyEmailUseCase _verifyEmailUseCase, RefreshSessionUseCase _refreshSessionUseCase, LogoutUserUseCase _logoutUserUseCase, ResetPasswordUseCase _resetPasswordUseCase) {
         this._registerUserUseCase = _registerUserUseCase;
         this._loginUserUseCase = _loginUserUseCase;
         this._verifyEmailUseCase = _verifyEmailUseCase;
         this._refreshSessionUseCase = _refreshSessionUseCase;
         this._logoutUserUseCase = _logoutUserUseCase;
+        this._resetPasswordUseCase = _resetPasswordUseCase;
     }
 
     @PostMapping("/register")
@@ -132,4 +136,21 @@ public class AuthController {
         _logoutUserUseCase.execute(new LogoutUserCommand(request.refreshToken()))
                 .getOrElseThrow(n -> DomainException.with(n.getErrors()));
     }
+
+    @PostMapping("/password/forgot")
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(
+            summary = "Solicitar redefinição de senha",
+            description = "Gera um token temporário e envia e-mail com link de redefinição. "
+                    + "Sempre retorna 200 independentemente da existência do e-mail (anti-enumeration)."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Solicitação processada"),
+            @ApiResponse(responseCode = "422", description = "E-mail ausente ou com formato inválido")
+    })
+    public void forgotPassword(@Valid @RequestBody final ResetPasswordRequest request) {
+        this._resetPasswordUseCase.execute(new ResetPasswordCommand(request.email()))
+                .getOrElseThrow(n -> DomainException.with(n.getErrors()));
+    }
+
 }
