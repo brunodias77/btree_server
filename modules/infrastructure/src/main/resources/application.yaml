@@ -88,3 +88,6 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     enabled: true
+
+app:
+  frontend-url: "http://localhost:4200"

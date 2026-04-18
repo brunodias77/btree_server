@@ -62,8 +62,8 @@ public class UserValidator extends Validator {
     }
 
     private void checkPasswordHash() {
-        // Social users have no password — null hash is valid for them
-        if (this.user.getPasswordHash() == null) return;
+        // Social users do not require a password — skip validation entirely
+        if (!this.user.isRequiresPassword()) return;
         validatePassword(this.user.getPasswordHash(), this.validationHandler());
     }
 
@@ -96,24 +96,5 @@ public class UserValidator extends Validator {
         }
     }
 
-//    private void checkPasswordHash(){
-//        final var pass = this.user.getPasswordHash();
-//        if (pass == null || pass.isBlank()) {
-//            this.validationHandler().append(new Error("'password' não pode ser nulo ou vazio"));
-//            return;
-//        }
-//        if (pass.length() < PASSWORD_MIN_LENGTH) {
-//            this.validationHandler().append(new Error("'password' deve ter no mínimo " + PASSWORD_MIN_LENGTH + " caracteres"));
-//        }
-//        if (!PASSWORD_UPPERCASE.matcher(pass).find()) {
-//            this.validationHandler().append(new Error("'password' deve possuir ao menos uma letra maiúscula"));
-//        }
-//        if (!PASSWORD_LOWERCASE.matcher(pass).find()) {
-//            this.validationHandler().append(new Error("'password' deve possuir ao menos uma letra minúscula"));
-//        }
-//        if (!PASSWORD_DIGIT.matcher(pass).find()) {
-//            this.validationHandler().append(new Error("'password' deve possuir ao menos um dígito numérico"));
-//        }
-//    }
 
 }
