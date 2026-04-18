@@ -368,6 +368,51 @@ pm.test("Status 200", () => pm.response.to.have.status(200));
 
 ---
 
+### 7. Confirmar Redefinição de Senha
+
+**`POST /v1/auth/password/reset`**
+
+Redefine a senha do usuário usando o token recebido por e-mail. O token é de uso único e tem prazo de expiração.
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/auth/password/reset
+Content-Type: application/json
+```
+
+```json
+{
+  "token": "a1b2c3d4e5f6...",
+  "newPassword": "NovaSenha@5678"
+}
+```
+
+**Validações:**
+
+| Campo | Obrigatório | Restrições |
+|---|---|---|
+| `token` | Sim | Token recebido no e-mail |
+| `newPassword` | Sim | 8–256 caracteres |
+
+**Response `204 No Content`:** Body vazio.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Campo obrigatório ausente ou formato inválido |
+| `422` | Token inválido, expirado ou já utilizado; senha não atende aos requisitos |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 204", () => pm.response.to.have.status(204));
+pm.test("Body vazio", () => pm.expect(pm.response.text()).to.be.empty);
+```
+
+---
+
 ## Contexto: Users
 
 **Base path:** `/v1/users`  
@@ -462,6 +507,9 @@ Execute as requests na seguinte ordem:
 1. **Solicitar Redefinição de Senha** com e-mail cadastrado
 2. Verificar retorno `200 OK` (body vazio)
 3. Testar também com e-mail **não cadastrado** → deve retornar `200 OK` (anti-enumeração)
+4. Copiar token do e-mail recebido (ou do log do servidor em dev)
+5. **Confirmar Redefinição de Senha** com o token e a nova senha
+6. **Login** com a nova senha → confirmar acesso restaurado
 
 ---
 

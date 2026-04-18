@@ -58,13 +58,16 @@ public class FakeEmailService implements EmailService {
                 ║
                 ║  Olá, {}!
                 ║
-                ║  Use o token abaixo para redefinir sua senha:
+                ║  Clique no link abaixo para redefinir sua senha:
                 ║
+                ║  http://localhost:3000/reset-password?token={}
+                ║
+                ║  Ou use o token diretamente via POST /v1/auth/password/reset:
                 ║  TOKEN: {}
                 ║
-                ║  (Válido por 30 minutos)
+                ║  (Válido por 30 minutos — uso único)
                 ╚══════════════════════════════════════════════════════════╝
                 """,
-                toEmail, username, rawToken);
+                toEmail, username, rawToken, rawToken);
     }
 }

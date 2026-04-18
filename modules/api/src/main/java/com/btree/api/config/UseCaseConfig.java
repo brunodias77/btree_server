@@ -3,6 +3,7 @@ package com.btree.api.config;
 import com.btree.application.usecase.job.clean_expired_tokens.CleanupExpiredTokensJob;
 import com.btree.application.usecase.job.process_domain_event.ProcessDomainEventsJob;
 import com.btree.application.usecase.job.retry_failed_event.RetryFailedEventsJob;
+import com.btree.application.usecase.user.auth.confirm_password_reset.ConfirmPasswordResetUseCase;
 import com.btree.application.usecase.user.auth.forgot_password.ForgotPasswordUseCase;
 import com.btree.application.usecase.user.auth.login.LoginUserUseCase;
 import com.btree.application.usecase.user.auth.logout.LogoutUserUseCase;
@@ -155,6 +156,22 @@ public class UseCaseConfig {
                 emailService, eventPublisher, transactionManager
         );
     }
+
+    @Bean
+    public ConfirmPasswordResetUseCase confirmPasswordResetUseCase(
+            final UserTokenGateway userTokenGateway,
+            final UserGateway userGateway,
+            final TokenHasher tokenHasher,
+            final PasswordHasher passwordHasher,
+            final DomainEventPublisher eventPublisher,
+            final TransactionManager transactionManager
+    ) {
+        return new ConfirmPasswordResetUseCase(
+                userTokenGateway, userGateway, tokenHasher,
+                passwordHasher, eventPublisher, transactionManager
+        );
+    }
+
 //
 //    @Bean
 //    public LoginWithSocialProviderUseCase loginWithSocialProviderUseCase(

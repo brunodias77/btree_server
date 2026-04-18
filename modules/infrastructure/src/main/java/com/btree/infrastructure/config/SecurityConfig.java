@@ -70,6 +70,8 @@ public class SecurityConfig {
             "/v1/auth/verify-email",
             "/v1/auth/logout",
             "/v1/auth/password/forgot",
+            "/v1/auth/password/validate-token",
+            "/v1/auth/password/reset",
             "/v1/auth/social/**",   // padrão wildcard para todos os provedores OAuth2
             "/v1/auth/2fa/verify",
             "/actuator/health",     // health check sem auth para load balancers e orquestradores

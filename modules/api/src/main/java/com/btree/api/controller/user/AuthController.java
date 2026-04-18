@@ -4,6 +4,8 @@ import com.btree.api.dto.request.user.*;
 import com.btree.api.dto.response.user.LoginUserResponse;
 import com.btree.api.dto.response.user.RefreshTokenResponse;
 import com.btree.api.dto.response.user.RegisterUserResponse;
+import com.btree.application.usecase.user.auth.confirm_password_reset.ConfirmPasswordResetCommand;
+import com.btree.application.usecase.user.auth.confirm_password_reset.ConfirmPasswordResetUseCase;
 import com.btree.application.usecase.user.auth.forgot_password.ForgotPasswordCommand;
 import com.btree.application.usecase.user.auth.forgot_password.ForgotPasswordUseCase;
 import com.btree.application.usecase.user.auth.login.LoginUserCommand;
@@ -17,14 +19,14 @@ import com.btree.application.usecase.user.auth.register.RegisterUserUseCase;
 import com.btree.application.usecase.user.auth.verify_email.VerifyEmailCommand;
 import com.btree.application.usecase.user.auth.verify_email.VerifyEmailUseCase;
 import com.btree.shared.domain.DomainException;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 @RestController
 @RequestMapping("/v1/auth")
@@ -37,14 +39,24 @@ public class AuthController {
     private final RefreshSessionUseCase _refreshSessionUseCase;
     private final LogoutUserUseCase _logoutUserUseCase;
     private final ForgotPasswordUseCase _forgotPasswordUseCase;
+    private final ConfirmPasswordResetUseCase _confirmPasswordResetUseCase;
 
-    public AuthController(RegisterUserUseCase _registerUserUseCase, LoginUserUseCase _loginUserUseCase, VerifyEmailUseCase _verifyEmailUseCase, RefreshSessionUseCase _refreshSessionUseCase, LogoutUserUseCase _logoutUserUseCase, ForgotPasswordUseCase _forgotPasswordUseCase) {
+    public AuthController(
+            final RegisterUserUseCase _registerUserUseCase,
+            final LoginUserUseCase _loginUserUseCase,
+            final VerifyEmailUseCase _verifyEmailUseCase,
+            final RefreshSessionUseCase _refreshSessionUseCase,
+            final LogoutUserUseCase _logoutUserUseCase,
+            final ForgotPasswordUseCase _forgotPasswordUseCase,
+            final ConfirmPasswordResetUseCase _confirmPasswordResetUseCase
+    ) {
         this._registerUserUseCase = _registerUserUseCase;
         this._loginUserUseCase = _loginUserUseCase;
         this._verifyEmailUseCase = _verifyEmailUseCase;
         this._refreshSessionUseCase = _refreshSessionUseCase;
         this._logoutUserUseCase = _logoutUserUseCase;
         this._forgotPasswordUseCase = _forgotPasswordUseCase;
+        this._confirmPasswordResetUseCase = _confirmPasswordResetUseCase;
     }
 
     @PostMapping("/register")
@@ -56,7 +68,7 @@ public class AuthController {
             @ApiResponse(responseCode = "409", description = "Username ou e-mail já existe"),
             @ApiResponse(responseCode = "422", description = "Regras de negócio violadas")
     })
-    public RegisterUserResponse register(@Valid @RequestBody final RegisterUserRequest request){
+    public RegisterUserResponse register(@Valid @RequestBody final RegisterUserRequest request) {
         final var command = new RegisterUserCommand(
                 request.username(),
                 request.email(),
@@ -75,7 +87,7 @@ public class AuthController {
             @ApiResponse(responseCode = "400", description = "Dados de entrada inválidos"),
             @ApiResponse(responseCode = "401", description = "Credenciais inválidas ou conta impedida")
     })
-    public LoginUserResponse login(@Valid @RequestBody final LoginUserRequest request, final HttpServletRequest httpRequest){
+    public LoginUserResponse login(@Valid @RequestBody final LoginUserRequest request, final HttpServletRequest httpRequest) {
         final var command = new LoginUserCommand(
                 request.identifier(),
                 request.password(),
@@ -124,7 +136,6 @@ public class AuthController {
         );
     }
 
-
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Encerrar sessão", description = "Revoga o refresh token, impedindo renovação futura de tokens")
@@ -153,4 +164,21 @@ public class AuthController {
                 .getOrElseThrow(n -> DomainException.with(n.getErrors()));
     }
 
+    @PostMapping("/password/reset")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Redefinir senha",
+            description = "Define a nova senha usando o token de redefinição recebido por e-mail. "
+                    + "O token é invalidado após o uso (uso único)."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Senha redefinida com sucesso"),
+            @ApiResponse(responseCode = "400", description = "Dados de entrada inválidos"),
+            @ApiResponse(responseCode = "422", description = "Token inválido, expirado ou já utilizado; ou senha fraca")
+    })
+    public void resetPassword(@Valid @RequestBody final ConfirmPasswordResetRequest request) {
+        this._confirmPasswordResetUseCase.execute(
+                new ConfirmPasswordResetCommand(request.token(), request.newPassword())
+        ).getOrElseThrow(n -> DomainException.with(n.getErrors()));
+    }
 }
