@@ -1,0 +1,368 @@
+-- ============================================================
+-- SEEDS — dados iniciais para desenvolvimento/staging
+-- Schema: e-commerce (users, catalog, coupons)
+-- Gerado em: 2026-04-06
+-- ============================================================
+
+-- ============================================================
+-- VARIÁVEIS DE REFERÊNCIA (UUIDs fixos para rastreabilidade)
+-- ============================================================
+-- user_id  : a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+-- role_id  : b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a12
+-- profile_id: c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a13
+-- ============================================================
+
+BEGIN;
+
+-- ============================================================
+-- 1. ROLES
+-- ============================================================
+
+INSERT INTO users.roles (id, name, description, created_at)
+VALUES
+    (
+        'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a12',
+        'ADMIN',
+        'Acesso total ao sistema. Gerencia usuários, catálogo, pedidos e configurações.',
+        NOW()
+    ),
+    (
+        'b2eebc99-9c0b-4ef8-bb6d-6bb9bd380a13',
+        'CUSTOMER',
+        'Usuário padrão da loja. Acesso às funcionalidades de compra.',
+        NOW()
+    ),
+    (
+        'b3eebc99-9c0b-4ef8-bb6d-6bb9bd380a14',
+        'OPERATOR',
+        'Operador de loja. Acesso a pedidos, estoque e atendimento.',
+        NOW()
+    )
+ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- 2. USUÁRIO ADMINISTRADOR
+-- Senha: Senhaforte@123
+-- Hash bcrypt (cost 12): gerado externamente e fixo para seeds
+-- ============================================================
+
+INSERT INTO users.users (
+    id,
+    username,
+    email,
+    email_verified,
+    password_hash,
+    phone_number,
+    phone_number_verified,
+    two_factor_enabled,
+    account_locked,
+    access_failed_count,
+    enabled,
+    created_at,
+    updated_at
+)
+VALUES (
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    'brunoAdmin',
+    'bruno@admin.com',
+    TRUE,
+    -- bcrypt(cost=12) de "Senhaforte@123"
+    '$2a$12$KIcNmMHCVlnvbVG1QTd7t.Hb6qVmvnlPWpQr9mYEeN0J3k8Fa6nXq',
+    '+55 11 99999-0001',
+    TRUE,
+    FALSE,
+    FALSE,
+    0,
+    TRUE,
+    NOW(),
+    NOW()
+)
+ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- 3. VÍNCULO USUÁRIO → ROLE (ADMIN)
+-- ============================================================
+
+INSERT INTO users.user_roles (user_id, role_id)
+VALUES (
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a12'
+)
+ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- 4. AUTHORITIES EXPLÍCITAS DO ADMIN
+-- Granularidade fina para controle de permissões na API
+-- ============================================================
+
+INSERT INTO users.user_authorities (user_id, authority)
+VALUES
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'users:read'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'users:write'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'users:delete'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'catalog:read'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'catalog:write'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'catalog:delete'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'orders:read'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'orders:write'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'orders:cancel'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'payments:read'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'payments:refund'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'coupons:read'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'coupons:write'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'coupons:delete'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'reports:read'),
+    ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'admin:panel')
+ON CONFLICT ON CONSTRAINT uq_user_authority DO NOTHING;
+
+-- ============================================================
+-- 5. PERFIL DO ADMINISTRADOR
+-- ============================================================
+
+INSERT INTO users.profiles (
+    id,
+    user_id,
+    first_name,
+    last_name,
+    display_name,
+    birth_date,
+    gender,
+    preferred_language,
+    preferred_currency,
+    newsletter_subscribed,
+    accepted_terms_at,
+    accepted_privacy_at,
+    version,
+    created_at,
+    updated_at
+)
+VALUES (
+    'c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a13',
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    'Bruno',
+    'Admin',
+    'Bruno Admin',
+    '1990-01-15',
+    'male',
+    'pt-BR',
+    'BRL',
+    FALSE,
+    NOW(),
+    NOW(),
+    1,
+    NOW(),
+    NOW()
+)
+ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- 6. PREFERÊNCIAS DE NOTIFICAÇÃO DO ADMIN
+-- ============================================================
+
+INSERT INTO users.notification_preferences (
+    id,
+    user_id,
+    email_enabled,
+    push_enabled,
+    sms_enabled,
+    order_updates,
+    promotions,
+    price_drops,
+    back_in_stock,
+    newsletter,
+    created_at,
+    updated_at
+)
+VALUES (
+    'd3eebc99-9c0b-4ef8-bb6d-6bb9bd380a14',
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    TRUE,
+    TRUE,
+    FALSE,
+    TRUE,
+    FALSE,
+    FALSE,
+    FALSE,
+    FALSE,
+    NOW(),
+    NOW()
+)
+ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- 7. CATEGORIAS INICIAIS DO CATÁLOGO
+-- ============================================================
+
+INSERT INTO catalog.categories (id, parent_id, path, depth, name, slug, description, is_active, sort_order, version, created_at, updated_at)
+VALUES
+    -- Raízes
+    ('e1eebc99-9c0b-4ef8-bb6d-6bb9bd380a21', NULL, 'eletronicos',         0, 'Eletrônicos',      'eletronicos',           'Smartphones, notebooks, TVs e acessórios.',           TRUE, 1, 1, NOW(), NOW()),
+    ('e2eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', NULL, 'moda',                0, 'Moda',             'moda',                  'Roupas, calçados e acessórios para todos os estilos.', TRUE, 2, 1, NOW(), NOW()),
+    ('e3eebc99-9c0b-4ef8-bb6d-6bb9bd380a23', NULL, 'casa-e-jardim',       0, 'Casa e Jardim',    'casa-e-jardim',         'Móveis, decoração e utilidades domésticas.',          TRUE, 3, 1, NOW(), NOW()),
+    -- Filhas de Eletrônicos
+    ('e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a24', 'e1eebc99-9c0b-4ef8-bb6d-6bb9bd380a21', 'eletronicos/smartphones', 1, 'Smartphones', 'eletronicos-smartphones', 'Celulares das principais marcas.',   TRUE, 1, 1, NOW(), NOW()),
+    ('e5eebc99-9c0b-4ef8-bb6d-6bb9bd380a25', 'e1eebc99-9c0b-4ef8-bb6d-6bb9bd380a21', 'eletronicos/notebooks',   1, 'Notebooks',   'eletronicos-notebooks',   'Portáteis para trabalho e estudo.',  TRUE, 2, 1, NOW(), NOW()),
+    ('e6eebc99-9c0b-4ef8-bb6d-6bb9bd380a26', 'e1eebc99-9c0b-4ef8-bb6d-6bb9bd380a21', 'eletronicos/tvs',         1, 'TVs',         'eletronicos-tvs',         'Smart TVs 4K e OLED.',              TRUE, 3, 1, NOW(), NOW())
+ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- 8. MARCAS INICIAIS
+-- ============================================================
+
+INSERT INTO catalog.brands (id, name, slug, description, is_active, sort_order, created_at, updated_at)
+VALUES
+    ('f1eebc99-9c0b-4ef8-bb6d-6bb9bd380a31', 'Apple',   'apple',   'Tecnologia premium com ecossistema integrado.', TRUE, 1, NOW(), NOW()),
+    ('f2eebc99-9c0b-4ef8-bb6d-6bb9bd380a32', 'Samsung', 'samsung', 'Eletrônicos e eletrodomésticos globais.',       TRUE, 2, NOW(), NOW()),
+    ('f3eebc99-9c0b-4ef8-bb6d-6bb9bd380a33', 'Dell',    'dell',    'Computadores e soluções corporativas.',         TRUE, 3, NOW(), NOW()),
+    ('f4eebc99-9c0b-4ef8-bb6d-6bb9bd380a34', 'LG',      'lg',      'Eletrônicos e linha branca.',                   TRUE, 4, NOW(), NOW())
+ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- 9. PRODUTOS INICIAIS
+-- ============================================================
+
+INSERT INTO catalog.products (
+    id, category_id, brand_id,
+    sku, slug, name, short_description,
+    price, compare_at_price, cost_price,
+    stock, reserved_stock, low_stock_threshold,
+    weight_grams,
+    status, is_featured, is_digital, requires_shipping,
+    attributes, tags, version,
+    published_at, created_at, updated_at
+)
+VALUES
+    (
+        'aa1ebc99-9c0b-4ef8-bb6d-6bb9bd380b01',
+        'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a24',  -- Smartphones
+        'f1eebc99-9c0b-4ef8-bb6d-6bb9bd380a31',  -- Apple
+        'APPL-IPH15PRO-128', 'apple-iphone-15-pro-128gb',
+        'Apple iPhone 15 Pro 128 GB',
+        'Chip A17 Pro, tela Super Retina XDR 6.1", câmera 48 MP.',
+        7999.00, 8499.00, 5500.00,
+        50, 0, 5, 187,
+        'ACTIVE', TRUE, FALSE, TRUE,
+        '{"cor": "Titânio Natural", "armazenamento": "128 GB", "tela": "6.1 polegadas"}'::jsonb,
+        ARRAY['apple', 'iphone', 'smartphone', '5g'],
+        1, NOW(), NOW(), NOW()
+    ),
+    (
+        'aa2ebc99-9c0b-4ef8-bb6d-6bb9bd380b02',
+        'e4eebc99-9c0b-4ef8-bb6d-6bb9bd380a24',  -- Smartphones
+        'f2eebc99-9c0b-4ef8-bb6d-6bb9bd380a32',  -- Samsung
+        'SAMS-S24U-256', 'samsung-galaxy-s24-ultra-256gb',
+        'Samsung Galaxy S24 Ultra 256 GB',
+        'Display Dynamic AMOLED 6.8", S Pen integrada, câmera 200 MP.',
+        8499.00, 9199.00, 5800.00,
+        35, 0, 5, 232,
+        'ACTIVE', TRUE, FALSE, TRUE,
+        '{"cor": "Titânio Preto", "armazenamento": "256 GB", "tela": "6.8 polegadas"}'::jsonb,
+        ARRAY['samsung', 'galaxy', 'smartphone', 'spen'],
+        1, NOW(), NOW(), NOW()
+    ),
+    (
+        'aa3ebc99-9c0b-4ef8-bb6d-6bb9bd380b03',
+        'e5eebc99-9c0b-4ef8-bb6d-6bb9bd380a25',  -- Notebooks
+        'f3eebc99-9c0b-4ef8-bb6d-6bb9bd380a33',  -- Dell
+        'DELL-XPS15-I7-512', 'dell-xps-15-i7-512gb',
+        'Dell XPS 15 Intel Core i7 512 GB',
+        'Tela OLED 15.6" 4K, 16 GB RAM, SSD 512 GB, placa NVIDIA RTX 4060.',
+        11499.00, 12999.00, 8200.00,
+        20, 0, 3, 1800,
+        'ACTIVE', FALSE, FALSE, TRUE,
+        '{"processador": "Intel Core i7-13700H", "ram": "16 GB", "armazenamento": "512 GB SSD", "tela": "15.6 polegadas OLED"}'::jsonb,
+        ARRAY['dell', 'notebook', 'xps', 'i7'],
+        1, NOW(), NOW(), NOW()
+    )
+ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- 10. CUPOM DE BOAS-VINDAS
+-- ============================================================
+
+INSERT INTO coupons.coupons (
+    id, code, name, description,
+    discount_type, discount_value, max_discount_amount,
+    scope, min_purchase_amount, min_items_quantity,
+    valid_from, valid_until,
+    max_uses, current_uses, max_uses_per_user,
+    is_stackable, status,
+    created_by, metadata, version, created_at, updated_at
+)
+VALUES (
+    'cc1ebc99-9c0b-4ef8-bb6d-6bb9bd380c01',
+    'BEM-VINDO10',
+    'Desconto de Boas-Vindas 10%',
+    'Cupom de 10% de desconto para a primeira compra. Válido por 90 dias.',
+    'PERCENTAGE',
+    10.00,
+    150.00,        -- desconto máximo de R$ 150
+    'ALL',
+    100.00,        -- pedido mínimo R$ 100
+    1,
+    NOW(),
+    NOW() + INTERVAL '90 days',
+    1000,
+    0,
+    1,             -- 1 uso por usuário
+    FALSE,
+    'ACTIVE',
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',  -- criado pelo admin
+    '{"campaign": "onboarding", "channel": "organic"}'::jsonb,
+    1,
+    NOW(),
+    NOW()
+)
+ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- 11. AUDITORIA — registro de criação do seed
+-- ============================================================
+
+INSERT INTO shared.audit_logs (
+    id, module, entity_type, entity_id,
+    action, new_values,
+    user_id, ip_address, created_at
+)
+VALUES (
+    'd1eebc99-9c0b-4ef8-bb6d-6bb9bd380d01',
+    'users',
+    'User',
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    'SEED_CREATE',
+    '{"email": "bruno@admin.com", "role": "ADMIN", "source": "seeds.sql"}'::jsonb,
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    '127.0.0.1',
+    NOW()
+)
+ON CONFLICT DO NOTHING;
+
+COMMIT;
+
+-- ============================================================
+-- VERIFICAÇÃO PÓS-SEED (execute manualmente se quiser validar)
+-- ============================================================
+--
+-- SELECT u.email, u.email_verified, u.enabled,
+--        r.name AS role,
+--        p.first_name || ' ' || p.last_name AS full_name
+-- FROM   users.users u
+-- JOIN   users.user_roles ur ON ur.user_id = u.id
+-- JOIN   users.roles r       ON r.id = ur.role_id
+-- JOIN   users.profiles p    ON p.user_id = u.id
+-- WHERE  u.email = 'bruno@admin.com';
+--
+-- ============================================================
+-- ATENÇÃO: HASH DE SENHA
+-- ============================================================
+-- O hash acima é um placeholder para fins de seed/dev.
+-- Em produção, substitua-o pelo hash real gerado pela sua
+-- camada de aplicação (BCryptPasswordEncoder, Argon2, etc.)
+-- antes de executar este script.
+--
+-- Exemplo Spring Security (Java):
+--   new BCryptPasswordEncoder(12).encode("Senhaforte@123")
+--
+-- Exemplo Node.js (bcrypt):
+--   await bcrypt.hash("Senhaforte@123", 12)
+-- ============================================================

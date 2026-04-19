@@ -1,0 +1,69 @@
+-- V002: Create shared PostgreSQL enum types.
+
+CREATE TYPE shared.order_status AS ENUM (
+    'PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED',
+    'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED'
+);
+
+CREATE TYPE shared.payment_status AS ENUM (
+    'PENDING', 'AUTHORIZED', 'CAPTURED', 'FAILED',
+    'CANCELLED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'CHARGEBACK'
+);
+
+CREATE TYPE shared.payment_method_type AS ENUM (
+    'CREDIT_CARD', 'DEBIT_CARD', 'PIX', 'BOLETO', 'WALLET'
+);
+
+CREATE TYPE shared.cart_status AS ENUM (
+    'ACTIVE', 'ABANDONED', 'CONVERTED', 'EXPIRED', 'MERGED'
+);
+
+CREATE TYPE shared.product_status AS ENUM (
+    'DRAFT', 'ACTIVE', 'INACTIVE', 'OUT_OF_STOCK', 'DISCONTINUED'
+);
+
+CREATE TYPE shared.coupon_type AS ENUM (
+    'PERCENTAGE', 'FIXED_AMOUNT', 'FREE_SHIPPING'
+);
+
+CREATE TYPE shared.coupon_scope AS ENUM (
+    'ALL', 'CATEGORY', 'PRODUCT', 'BRAND', 'USER'
+);
+
+CREATE TYPE shared.coupon_status AS ENUM (
+    'ACTIVE', 'INACTIVE', 'EXPIRED', 'DEPLETED'
+);
+
+CREATE TYPE shared.shipping_method AS ENUM (
+    'STANDARD', 'EXPRESS', 'SAME_DAY', 'PICKUP'
+);
+
+CREATE TYPE shared.card_brand AS ENUM (
+    'VISA', 'MASTERCARD', 'ELO', 'AMEX', 'HIPERCARD', 'DINERS'
+);
+
+CREATE TYPE shared.token_type AS ENUM (
+    'EMAIL_VERIFICATION', 'PASSWORD_RESET', 'TWO_FACTOR', 'TWO_FACTOR_SETUP',
+    'MAGIC_LINK', 'ACCOUNT_UNLOCK', 'PHONE_VERIFICATION'
+);
+
+CREATE TYPE shared.stock_movement_type AS ENUM (
+    'PURCHASE', 'SALE', 'RETURN', 'ADJUSTMENT', 'RESERVATION', 'RELEASE', 'DAMAGE', 'TRANSFER'
+);
+
+CREATE TYPE shared.transaction_type AS ENUM (
+    'AUTHORIZATION', 'CAPTURE', 'VOID', 'REFUND', 'CHARGEBACK'
+);
+
+CREATE TYPE shared.refund_status AS ENUM (
+    'PENDING', 'APPROVED', 'REJECTED', 'PROCESSED'
+);
+
+CREATE TYPE shared.chargeback_status AS ENUM (
+    'OPENED', 'UNDER_REVIEW', 'WON', 'LOST', 'ACCEPTED'
+);
+
+CREATE TYPE shared.cancellation_reason AS ENUM (
+    'CUSTOMER_REQUEST', 'OUT_OF_STOCK', 'PAYMENT_FAILED',
+    'FRAUD_SUSPECTED', 'DUPLICATE_ORDER', 'SELLER_CANCELLED', 'OTHER'
+);

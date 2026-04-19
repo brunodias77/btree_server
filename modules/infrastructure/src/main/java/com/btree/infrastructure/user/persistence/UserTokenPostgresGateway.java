@@ -2,6 +2,7 @@ package com.btree.infrastructure.user.persistence;
 
 import com.btree.domain.user.entity.UserToken;
 import com.btree.domain.user.gateway.UserTokenGateway;
+import com.btree.domain.user.identifier.UserId;
 import com.btree.domain.user.identifier.UserTokenId;
 import com.btree.infrastructure.user.entity.UserTokenJpaEntity;
 import com.btree.shared.exception.NotFoundException;
@@ -55,5 +56,12 @@ public class UserTokenPostgresGateway implements UserTokenGateway {
     @Override
     public int deleteExpired(final int batchSize) {
         return userTokenJpaRepository.deleteExpiredBatch(Instant.now(), batchSize);
+    }
+
+    @Override
+    public void invalidateActiveByUserIdAndType(final UserId userId, final String tokenType) {
+        userTokenJpaRepository.markActiveAsUsedByUserIdAndType(
+                userId.getValue(), tokenType, Instant.now()
+        );
     }
 }

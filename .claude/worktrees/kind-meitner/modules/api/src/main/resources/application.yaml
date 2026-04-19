@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/btree
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+minio:
+  url: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket: btree-uploads
+  public-url: http://localhost:9000
+
+security:
+  jwt:
+    secret: dev-jwt-secret-that-is-long-enough-for-hs256-algorithm-minimum-256-bits
+    access-token-expiration-ms: 900000
+    refresh-token-expiration-ms: 604800000
+  encryption:
+    secret: dev-encryption-secret-32-chars!!
+    salt: deadbeefcafebabe
+  google:
+    client-id: dev-google-client-id.apps.googleusercontent.com

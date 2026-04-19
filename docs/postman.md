@@ -1,285 +1,1071 @@
-# Guia Atualizado da API no Postman
+# Postman — Guia de Testes da API btree
 
-Este documento reflete o estado atual do código em `modules/api`, `SecurityConfig` e `application.yaml`.
+## Configuração Inicial
 
-## 1. O que mudou nesta revisão
+### Environment Variables
 
-- O inventário de endpoints foi atualizado a partir dos controllers reais.
-- A exigência de autenticação foi conferida no `SecurityConfig`, não apenas nas anotações Swagger.
-- Os paths finais foram corrigidos considerando `server.servlet.context-path: /api`.
-- Foram registrados os desvios atuais da API para evitar testes em URLs erradas.
+Crie um Environment no Postman chamado **btree-local** com as seguintes variáveis:
 
-## 2. Observações importantes
-
-### 2.1. Base da aplicação
-
-- Host local: `http://localhost:8080`
-- Context path global: `/api`
-
-Isso significa que:
-
-- endpoints com `@RequestMapping("/v1/...")` ficam em `http://localhost:8080/api/v1/...`
-- endpoints com `@RequestMapping("/api/v1/...")` ficam em `http://localhost:8080/api/api/v1/...`
-
-Hoje existe essa inconsistência no código.
-
-### 2.2. Inconsistência atual de paths
-
-Os controllers de `auth`, `users`, `profile`, `address` e `2fa` usam `/v1/...`.
-
-Os controllers de `catalog` e `uploads` usam `/api/v1/...`.
-
-Como a aplicação já aplica `/api` no servidor, as rotas finais de catálogo e upload ficam duplicadas com `/api/api/...`.
-
-Exemplos:
-
-- Auth login: `http://localhost:8080/api/v1/auth/login`
-- Categories list: `http://localhost:8080/api/api/v1/catalog/categories`
-- Upload: `http://localhost:8080/api/api/v1/uploads`
-
-### 2.3. Autenticação real
-
-O `SecurityConfig` libera apenas estas rotas:
-
-- `/v1/auth/register`
-- `/v1/auth/login`
-- `/v1/auth/refresh`
-- `/v1/auth/verify-email`
-- `/v1/auth/logout`
-- `/v1/auth/password/forgot`
-- `/v1/auth/social/**`
-- `/v1/auth/2fa/verify`
-- `/actuator/health`
-- `/swagger-ui/**`
-- `/v3/api-docs/**`
-
-Todo o restante exige JWT Bearer.
-
-Isso é importante porque alguns controllers de catálogo descrevem endpoints como públicos, mas o `SecurityConfig` atual os protege.
-
-### 2.4. Alertas de segurança já identificados
-
-- Login social Google ainda não valida corretamente `aud`, `iss` e `email_verified`.
-- Upload ainda aceita `SVG`, e os arquivos ficam publicamente acessíveis.
-- Há segredos default no `application.yaml`.
-- O login ainda não aplica lockout/failed-attempt tracking de forma efetiva.
-
-## 3. Configurando o Postman
-
-### 3.1. Environment
-
-Crie um environment chamado `BTree Local` com estas variáveis:
-
-| Variável | Valor inicial | Uso |
+| Variable | Initial Value | Description |
 |---|---|---|
-| `host` | `http://localhost:8080` | host da aplicação |
-| `token` | | access token JWT |
-| `refreshToken` | | refresh token |
-| `transactionId` | | transaction id do fluxo 2FA |
-| `setupTokenId` | | setup token do fluxo de ativação de 2FA |
-| `categoryId` | | categoria para testes de catálogo |
-| `brandId` | | marca para testes de catálogo |
-| `productId` | | produto para testes |
-| `imageId` | | imagem de produto para testes |
-| `addressId` | | endereço para testes |
+| `base_url` | `http://localhost:8080/api` | Base URL da API |
+| `access_token` | _(vazio)_ | Preenchido automaticamente após login |
+| `refresh_token` | _(vazio)_ | Preenchido automaticamente após login |
+| `user_id` | _(vazio)_ | Preenchido automaticamente após login |
+| `transaction_id` | _(vazio)_ | Preenchido automaticamente quando login detecta 2FA ativo |
+| `setup_token_id` | _(vazio)_ | Preenchido automaticamente durante configuração de 2FA |
+| `address_id` | _(vazio)_ | Preenchido após cadastrar ou listar endereços |
 
-### 3.2. Authorization
+### Authorization Global
 
-Na collection, configure:
+Em todas as requisições protegidas, configure:
 
-- Type: `Bearer Token`
-- Token: `{{token}}`
+- **Auth Type:** `Bearer Token`
+- **Token:** `{{access_token}}`
 
-### 3.3. Script de captura de tokens
+### Headers Padrão
 
-Use este script em `login`, `refresh`, `social login` e `2fa verify`:
+Para todas as requisições com body:
+
+```
+Content-Type: application/json
+Accept: application/json
+```
+
+---
+
+## Formato de Erro Padrão
+
+Todos os erros seguem o mesmo schema:
+
+```json
+{
+  "status": 422,
+  "error": "Unprocessable Entity",
+  "message": "Descrição do erro principal",
+  "errors": ["Detalhe 1", "Detalhe 2"],
+  "timestamp": "2026-04-18T12:00:00Z",
+  "path": "/api/v1/..."
+}
+```
+
+| Status | Significado |
+|---|---|
+| `400` | Dados de entrada inválidos (formato, tipo, obrigatoriedade) |
+| `401` | Token ausente, inválido ou expirado |
+| `403` | Autenticado, mas sem permissão |
+| `404` | Recurso não encontrado |
+| `409` | Conflito (email/username já existe, conflito de versão) |
+| `422` | Regra de negócio violada |
+| `500` | Erro interno inesperado |
+
+---
+
+## Contexto: Auth
+
+**Base path:** `/v1/auth`  
+**Segurança:** Todos os endpoints abaixo são **públicos** (sem JWT).
+
+---
+
+### 1. Registrar Usuário
+
+**`POST /v1/auth/register`**
+
+Cria uma nova conta de usuário. Após o registro, um e-mail de verificação é enviado.
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/auth/register
+Content-Type: application/json
+```
+
+```json
+{
+  "username": "joao_silva",
+  "email": "joao@exemplo.com",
+  "password": "Senha@1234"
+}
+```
+
+**Validações:**
+
+| Campo | Obrigatório | Restrições |
+|---|---|---|
+| `username` | Sim | 1–256 caracteres |
+| `email` | Sim | Formato de e-mail válido |
+| `password` | Sim | 8–256 caracteres |
+
+**Response `201 Created`:**
+
+```json
+{
+  "userId": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "username": "joao_silva",
+  "email": "joao@exemplo.com",
+  "createdAt": "2026-04-18T12:00:00Z"
+}
+```
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Campo obrigatório ausente ou formato inválido |
+| `409` | `username` ou `email` já cadastrado |
+| `422` | Regra de negócio (ex: senha fraca) |
+
+**Scripts de Teste (Tests tab):**
 
 ```javascript
-const json = pm.response.json();
-
-if (json.accessToken) pm.environment.set("token", json.accessToken);
-if (json.refreshToken) pm.environment.set("refreshToken", json.refreshToken);
-if (json.transactionId) pm.environment.set("transactionId", json.transactionId);
-if (json.setup_token_id) pm.environment.set("setupTokenId", json.setup_token_id);
-if (json.setupTokenId) pm.environment.set("setupTokenId", json.setupTokenId);
+pm.test("Status 201", () => pm.response.to.have.status(201));
+pm.test("userId presente", () => {
+  const body = pm.response.json();
+  pm.expect(body.userId).to.be.a("string");
+  pm.environment.set("user_id", body.userId);
+});
 ```
 
-## 4. Inventário Real de Endpoints
+---
 
-## 4.1. Públicos
+### 2. Login
 
-| Grupo | Método | URL final |
+**`POST /v1/auth/login`**
+
+Autentica um usuário e retorna tokens de acesso e refresh. Se o usuário tiver 2FA ativo, retorna um `transactionId` em vez dos tokens.
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/auth/login
+Content-Type: application/json
+```
+
+```json
+{
+  "identifier": "joao_silva",
+  "password": "Senha@1234"
+}
+```
+
+> O campo `identifier` aceita tanto **username** quanto **e-mail**.
+
+**Response `200 OK` (sem 2FA):**
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "accessTokenExpiresAt": "2026-04-18T12:15:00Z",
+  "userId": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "username": "joao_silva",
+  "email": "joao@exemplo.com",
+  "requiresTwoFactor": null,
+  "transactionId": null
+}
+```
+
+**Response `200 OK` (com 2FA ativo):**
+
+```json
+{
+  "userId": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "username": "joao_silva",
+  "email": "joao@exemplo.com",
+  "requiresTwoFactor": true,
+  "transactionId": "019600a1-ffff-7d4e-a5f6-abcdef012345"
+}
+```
+
+> Os campos `accessToken`, `refreshToken` e `accessTokenExpiresAt` são omitidos quando 2FA está ativo (`@JsonInclude(NON_NULL)`). Use o `transactionId` para chamar `POST /v1/auth/2fa/verify`.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Campo obrigatório ausente |
+| `401` | Credenciais inválidas ou conta bloqueada |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+if (body.accessToken) {
+  pm.environment.set("access_token", body.accessToken);
+  pm.environment.set("refresh_token", body.refreshToken);
+  pm.environment.set("user_id", body.userId);
+  pm.test("Tokens salvos no environment", () => {
+    pm.expect(pm.environment.get("access_token")).to.not.be.empty;
+  });
+} else if (body.requiresTwoFactor) {
+  pm.environment.set("transaction_id", body.transactionId);
+  pm.environment.set("user_id", body.userId);
+  pm.test("transactionId salvo para 2FA", () => {
+    pm.expect(pm.environment.get("transaction_id")).to.not.be.empty;
+  });
+}
+```
+
+---
+
+### 3. Login Social (OAuth2)
+
+**`POST /v1/auth/social/{provider}`**
+
+Autentica um usuário via token OAuth2 de um provedor externo. Cria conta automaticamente se o e-mail ainda não existir, ou vincula ao usuário existente caso o e-mail já esteja cadastrado.
+
+**Provedores suportados:** `google` (case-insensitive)
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/auth/social/google
+Content-Type: application/json
+```
+
+```json
+{
+  "token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjEx..."
+}
+```
+
+**Validações:**
+
+| Campo | Obrigatório | Restrições |
 |---|---|---|
-| Auth | `POST` | `{{host}}/api/v1/auth/register` |
-| Auth | `POST` | `{{host}}/api/v1/auth/login` |
-| Auth | `POST` | `{{host}}/api/v1/auth/verify-email` |
-| Auth | `POST` | `{{host}}/api/v1/auth/logout` |
-| Auth | `POST` | `{{host}}/api/v1/auth/social/{provider}` |
-| Auth | `POST` | `{{host}}/api/v1/auth/password/forgot` |
-| Auth | `POST` | `{{host}}/api/v1/auth/refresh` |
-| Auth | `POST` | `{{host}}/api/v1/auth/2fa/verify` |
+| `token` | Sim | ID token ou access token emitido pelo provedor OAuth2; não pode ser vazio |
+| `provider` (path) | Sim | Provedor OAuth2; atualmente apenas `google` |
 
-## 4.2. Protegidos por JWT
+**Response `200 OK`:**
 
-| Grupo | Método | URL final |
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "a9c3b2f1e8d7c6b5a4f3e2d1c0b9a8f7...",
+  "access_token_expires_at": "2026-04-18T12:15:00Z",
+  "user_id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "username": "joaosilva4829",
+  "email": "joao@gmail.com",
+  "roles": ["customer"]
+}
+```
+
+> **Comportamento por fluxo:**
+> - **Vínculo existente**: usuário já possui conta vinculada ao provedor → login direto.
+> - **E-mail existente, sem vínculo**: vincula o provedor ao usuário existente → login direto.
+> - **Usuário novo**: cria conta com `email_verified = true`, `password = null`, username derivado do perfil social (nome + sufixo de 4 dígitos aleatórios) e papel `customer`.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Campo `token` ausente ou em branco |
+| `400` | Provedor (`{provider}`) não suportado |
+| `401` | Token OAuth2 inválido ou expirado no provedor |
+| `403` | Conta desativada (`enabled = false`) |
+| `422` | Falha na validação do token pelo provedor (perfil não retornado) |
+| `500` | Erro interno inesperado durante a transação |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("access_token presente", () => {
+  pm.expect(body.access_token).to.be.a("string").and.not.be.empty;
+  pm.environment.set("access_token", body.access_token);
+});
+pm.test("refresh_token presente", () => {
+  pm.expect(body.refresh_token).to.be.a("string").and.not.be.empty;
+  pm.environment.set("refresh_token", body.refresh_token);
+});
+pm.test("user_id presente", () => {
+  pm.expect(body.user_id).to.be.a("string");
+  pm.environment.set("user_id", body.user_id);
+});
+pm.test("roles é array não-vazio", () => {
+  pm.expect(body.roles).to.be.an("array").and.not.be.empty;
+});
+```
+
+---
+
+### 4. Verificar E-mail
+
+**`POST /v1/auth/verify-email`**
+
+Confirma o e-mail do usuário usando o token recebido no e-mail de verificação.
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/auth/verify-email
+Content-Type: application/json
+```
+
+```json
+{
+  "token": "a1b2c3d4e5f6..."
+}
+```
+
+**Response `204 No Content`:** Body vazio.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Token ausente |
+| `422` | Token inválido, expirado ou já utilizado |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 204", () => pm.response.to.have.status(204));
+pm.test("Body vazio", () => pm.expect(pm.response.text()).to.be.empty);
+```
+
+---
+
+### 5. Renovar Sessão (Token Rotation)
+
+**`POST /v1/auth/refresh`**
+
+Gera um novo par de tokens (`accessToken` + `refreshToken`). O refresh token anterior é invalidado (token rotation).
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/auth/refresh
+Content-Type: application/json
+```
+
+```json
+{
+  "refreshToken": "{{refresh_token}}"
+}
+```
+
+**Response `200 OK`:**
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "accessTokenExpiresAt": "2026-04-18T12:30:00Z",
+  "userId": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "username": "joao_silva",
+  "email": "joao@exemplo.com"
+}
+```
+
+> **Atenção:** O `refreshToken` retornado é **novo**. O token enviado na requisição não pode ser reutilizado.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Refresh token ausente |
+| `422` | Sessão inválida, revogada ou expirada |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.environment.set("access_token", body.accessToken);
+pm.environment.set("refresh_token", body.refreshToken);
+pm.test("Tokens atualizados", () => {
+  pm.expect(body.accessToken).to.be.a("string").and.not.be.empty;
+  pm.expect(body.refreshToken).to.be.a("string").and.not.be.empty;
+});
+```
+
+---
+
+### 6. Logout
+
+**`POST /v1/auth/logout`**
+
+Revoga o refresh token, encerrando a sessão. O access token ainda é válido até expirar (15 min), mas sem possibilidade de renovação.
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/auth/logout
+Content-Type: application/json
+```
+
+```json
+{
+  "refreshToken": "{{refresh_token}}"
+}
+```
+
+**Response `204 No Content`:** Body vazio.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Refresh token ausente ou formato inválido |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 204", () => pm.response.to.have.status(204));
+pm.environment.unset("access_token");
+pm.environment.unset("refresh_token");
+```
+
+---
+
+### 7. Solicitar Redefinição de Senha
+
+**`POST /v1/auth/password/forgot`**
+
+Envia um e-mail com link/token para redefinição de senha. Sempre retorna `200 OK` independente de o e-mail existir (proteção anti-enumeração).
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/auth/password/forgot
+Content-Type: application/json
+```
+
+```json
+{
+  "email": "joao@exemplo.com"
+}
+```
+
+**Response `200 OK`:** Body vazio.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `422` | E-mail ausente ou formato inválido |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+// Sempre 200 independente do e-mail existir ou não
+```
+
+---
+
+### 8. Confirmar Redefinição de Senha
+
+**`POST /v1/auth/password/reset`**
+
+Redefine a senha do usuário usando o token recebido por e-mail. O token é de uso único e tem prazo de expiração.
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/auth/password/reset
+Content-Type: application/json
+```
+
+```json
+{
+  "token": "a1b2c3d4e5f6...",
+  "newPassword": "NovaSenha@5678"
+}
+```
+
+**Validações:**
+
+| Campo | Obrigatório | Restrições |
 |---|---|---|
-| Auth | `POST` | `{{host}}/api/v1/auth/sessions/revoke-all` |
-| Users | `GET` | `{{host}}/api/v1/users/me` |
-| Profile | `GET` | `{{host}}/api/v1/users/me/profile` |
-| Profile | `PUT` | `{{host}}/api/v1/users/me/profile` |
-| 2FA | `POST` | `{{host}}/api/v1/users/me/2fa/setup` |
-| 2FA | `POST` | `{{host}}/api/v1/users/me/2fa/enable` |
-| Address | `GET` | `{{host}}/api/v1/users/me/addresses` |
-| Address | `POST` | `{{host}}/api/v1/users/me/addresses` |
-| Address | `PUT` | `{{host}}/api/v1/users/me/addresses/{id}` |
-| Address | `DELETE` | `{{host}}/api/v1/users/me/addresses/{id}` |
-| Address | `PATCH` | `{{host}}/api/v1/users/me/addresses/{id}/default` |
-| Categories | `GET` | `{{host}}/api/api/v1/catalog/categories` |
-| Categories | `POST` | `{{host}}/api/api/v1/catalog/categories` |
-| Categories | `GET` | `{{host}}/api/api/v1/catalog/categories/{id}` |
-| Categories | `PUT` | `{{host}}/api/api/v1/catalog/categories/{id}` |
-| Categories | `GET` | `{{host}}/api/api/v1/catalog/categories/{categoryId}/products` |
-| Brands | `POST` | `{{host}}/api/api/v1/catalog/brands` |
-| Brands | `PUT` | `{{host}}/api/api/v1/catalog/brands/{id}` |
-| Brands | `GET` | `{{host}}/api/api/v1/catalog/brands/{brandId}/products` |
-| Products | `GET` | `{{host}}/api/api/v1/catalog/products` |
-| Products | `GET` | `{{host}}/api/api/v1/catalog/products/featured` |
-| Products | `GET` | `{{host}}/api/api/v1/catalog/products/{id}` |
-| Products | `POST` | `{{host}}/api/api/v1/catalog/products` |
-| Products | `PATCH` | `{{host}}/api/api/v1/catalog/products/{id}` |
-| Products | `POST` | `{{host}}/api/api/v1/catalog/products/{id}/publish` |
-| Products | `POST` | `{{host}}/api/api/v1/catalog/products/{id}/pause` |
-| Products | `POST` | `{{host}}/api/api/v1/catalog/products/{id}/archive` |
-| Products | `POST` | `{{host}}/api/api/v1/catalog/products/{productId}/stock/adjustments` |
-| Products | `POST` | `{{host}}/api/api/v1/catalog/products/{productId}/stock/reservations` |
-| Products | `POST` | `{{host}}/api/api/v1/catalog/products/{productId}/images` |
-| Products | `DELETE` | `{{host}}/api/api/v1/catalog/products/{productId}/images/{imageId}` |
-| Products | `PATCH` | `{{host}}/api/api/v1/catalog/products/{productId}/images/{imageId}/primary` |
-| Products | `PUT` | `{{host}}/api/api/v1/catalog/products/{productId}/images/reorder` |
-| Uploads | `POST` | `{{host}}/api/api/v1/uploads` |
+| `token` | Sim | Token recebido no e-mail |
+| `newPassword` | Sim | 8–256 caracteres |
 
-## 5. Payloads úteis para teste
+**Response `204 No Content`:** Body vazio.
 
-## 5.1. Auth
+**Cenários de Erro:**
 
-### Registrar usuário
+| Status | Causa |
+|---|---|
+| `400` | Campo obrigatório ausente ou formato inválido |
+| `422` | Token inválido, expirado ou já utilizado; senha não atende aos requisitos |
 
-`POST {{host}}/api/v1/auth/register`
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 204", () => pm.response.to.have.status(204));
+pm.test("Body vazio", () => pm.expect(pm.response.text()).to.be.empty);
+```
+
+---
+
+### 9. Iniciar Configuração de 2FA
+
+**`POST /v1/auth/2fa/setup`**
+
+Gera um secret TOTP e retorna a URI do QR Code para configuração no app autenticador. O secret fica válido por **15 minutos** — use `/2fa/enable` neste prazo.
+
+> **Requer autenticação:** `Authorization: Bearer {{access_token}}`
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/auth/2fa/setup
+Authorization: Bearer {{access_token}}
+```
+
+Body vazio.
+
+**Response `200 OK`:**
 
 ```json
 {
-  "username": "joao.silva",
-  "email": "joao.silva@email.com",
-  "password": "Senha@123"
+  "setup_token_id": "019600a1-aaaa-7d4e-a5f6-111111111111",
+  "secret": "JBSWY3DPEHPK3PXP",
+  "qr_code_uri": "otpauth://totp/BTree:joao@exemplo.com?secret=JBSWY3DPEHPK3PXP&issuer=BTree&algorithm=SHA1&digits=6&period=30"
 }
 ```
 
-### Login
+| Campo | Descrição |
+|---|---|
+| `setup_token_id` | ID do token de setup — necessário para `/2fa/enable` |
+| `secret` | Secret Base32 para entrada manual no app autenticador |
+| `qr_code_uri` | URI `otpauth://` — codifique em QR Code para escaneamento |
 
-`POST {{host}}/api/v1/auth/login`
+**Cenários de Erro:**
 
-```json
-{
-  "identifier": "joao.silva@email.com",
-  "password": "Senha@123"
-}
+| Status | Causa |
+|---|---|
+| `401` | Token JWT ausente ou inválido |
+| `409` | 2FA já está ativado para este usuário |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("setup_token_id presente", () => {
+  pm.expect(body.setup_token_id).to.be.a("string").and.not.be.empty;
+  pm.environment.set("setup_token_id", body.setup_token_id);
+});
+pm.test("secret presente", () => pm.expect(body.secret).to.be.a("string").and.not.be.empty);
+pm.test("qr_code_uri começa com otpauth://", () => pm.expect(body.qr_code_uri).to.include("otpauth://totp/"));
 ```
 
-### Refresh
+---
 
-`POST {{host}}/api/v1/auth/refresh`
+### 10. Confirmar Ativação de 2FA
 
-```json
-{
-  "refreshToken": "{{refreshToken}}"
-}
+**`POST /v1/auth/2fa/enable`**
+
+Valida o código TOTP gerado pelo app autenticador e ativa o 2FA permanentemente na conta.
+
+> **Requer autenticação:** `Authorization: Bearer {{access_token}}`  
+> **Pré-requisito:** Chamada prévia a `/2fa/setup` nos últimos 15 minutos.
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/auth/2fa/enable
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
 ```
 
-### Logout
-
-`POST {{host}}/api/v1/auth/logout`
-
 ```json
 {
-  "refreshToken": "{{refreshToken}}"
-}
-```
-
-### Social login
-
-`POST {{host}}/api/v1/auth/social/google`
-
-```json
-{
-  "token": "GOOGLE_ID_TOKEN"
-}
-```
-
-### Verificar 2FA
-
-`POST {{host}}/api/v1/auth/2fa/verify`
-
-```json
-{
-  "transactionId": "{{transactionId}}",
+  "setup_token_id": "{{setup_token_id}}",
   "code": "123456"
 }
 ```
 
-## 5.2. Profile
+**Validações:**
 
-### Atualizar perfil
+| Campo | Obrigatório | Restrições |
+|---|---|---|
+| `setup_token_id` | Sim | UUID do token retornado por `/2fa/setup` |
+| `code` | Sim | Exatamente 6 dígitos numéricos |
 
-`PUT {{host}}/api/v1/users/me/profile`
+**Response `204 No Content`:** Body vazio.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | `setup_token_id` ou `code` ausentes / formato inválido |
+| `401` | Token JWT ausente ou inválido |
+| `422` | Token de setup expirado, já utilizado, tipo incorreto ou código TOTP inválido |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 204", () => pm.response.to.have.status(204));
+pm.test("Body vazio", () => pm.expect(pm.response.text()).to.be.empty);
+pm.environment.unset("setup_token_id");
+```
+
+---
+
+### 11. Verificar Código 2FA (segunda etapa do login)
+
+**`POST /v1/auth/2fa/verify`**
+
+Segunda etapa do login quando 2FA está ativo. Recebe o `transactionId` obtido no login e o código TOTP do app autenticador. Retorna os tokens finais de acesso.
+
+> **Endpoint público** — não requer JWT. O `transactionId` é o mecanismo de autorização desta etapa.  
+> O token de transação expira em **5 minutos** após o login.
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/auth/2fa/verify
+Content-Type: application/json
+```
 
 ```json
 {
-  "first_name": "Joao",
+  "transactionId": "{{transaction_id}}",
+  "code": "123456"
+}
+```
+
+**Validações:**
+
+| Campo | Obrigatório | Restrições |
+|---|---|---|
+| `transactionId` | Sim | UUID retornado pelo login quando `requiresTwoFactor: true` |
+| `code` | Sim | Exatamente 6 dígitos numéricos |
+
+**Response `200 OK`:**
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "refreshToken": "a9c3b2f1e8d7c6b5a4f3e2d1c0b9a8f7...",
+  "accessTokenExpiresAt": "2026-04-18T12:20:00Z",
+  "userId": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "username": "joao_silva",
+  "email": "joao@exemplo.com"
+}
+```
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | `transactionId` ou `code` ausentes / formato inválido |
+| `401` | Código TOTP inválido, `transactionId` não encontrado, expirado ou já utilizado; conta bloqueada |
+| `403` | Conta desativada |
+
+> **Proteção brute-force:** Após **5 códigos errados** a conta é bloqueada por **15 minutos**. O bloqueio compartilha o mesmo contador do login (tentativas de senha + TOTP somadas).
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("accessToken presente", () => {
+  pm.expect(body.accessToken).to.be.a("string").and.not.be.empty;
+  pm.environment.set("access_token", body.accessToken);
+});
+pm.test("refreshToken presente", () => {
+  pm.expect(body.refreshToken).to.be.a("string").and.not.be.empty;
+  pm.environment.set("refresh_token", body.refreshToken);
+});
+pm.test("userId confere", () => {
+  pm.expect(body.userId).to.equal(pm.environment.get("user_id"));
+});
+pm.environment.unset("transaction_id");
+```
+
+---
+
+## Contexto: Users
+
+**Base path:** `/v1/users`  
+**Segurança:** Todos os endpoints abaixo requerem **JWT válido** no header `Authorization: Bearer {{access_token}}`.
+
+---
+
+### 1. Obter Usuário Atual
+
+**`GET /v1/users/me`**
+
+Retorna os dados do usuário autenticado extraído do JWT.
+
+**Request:**
+
+```http
+GET {{base_url}}/v1/users/me
+Authorization: Bearer {{access_token}}
+```
+
+**Response `200 OK`:**
+
+```json
+{
+  "id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "username": "joao_silva",
+  "email": "joao@exemplo.com",
+  "email_verified": true,
+  "roles": ["ROLE_CUSTOMER"],
+  "profile": {
+    "first_name": "João",
+    "last_name": "Silva",
+    "display_name": "João Silva",
+    "avatar_url": "https://cdn.exemplo.com/avatars/joao.jpg",
+    "preferred_language": "pt-BR",
+    "preferred_currency": "BRL"
+  },
+  "created_at": "2026-04-18T12:00:00Z"
+}
+```
+
+> Campos do `profile` podem ser `null` se ainda não configurados pelo usuário.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `401` | Token ausente, inválido ou expirado |
+| `404` | Usuário não encontrado (caso extremo: conta deletada após login) |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("ID confere com environment", () => {
+  pm.expect(body.id).to.equal(pm.environment.get("user_id"));
+});
+pm.test("Email presente", () => pm.expect(body.email).to.be.a("string"));
+pm.test("Roles presente", () => pm.expect(body.roles).to.be.an("array").and.not.be.empty);
+```
+
+### 2. Obter Perfil Completo
+
+**`GET /v1/users`**
+
+Retorna o perfil detalhado do usuário autenticado (dados cadastrais, preferências, datas de aceite de termos).
+
+**Request:**
+
+```http
+GET {{base_url}}/v1/users
+Authorization: Bearer {{access_token}}
+```
+
+**Response `200 OK`:**
+
+```json
+{
+  "id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "user_id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "first_name": "João",
+  "last_name": "Silva",
+  "display_name": "João Silva",
+  "avatar_url": "https://cdn.exemplo.com/avatars/joao.jpg",
+  "birth_date": "1990-05-20",
+  "gender": "male",
+  "cpf": "123.456.789-00",
+  "preferred_language": "pt-BR",
+  "preferred_currency": "BRL",
+  "newsletter_subscribed": true,
+  "accepted_terms_at": "2026-04-18T12:00:00Z",
+  "accepted_privacy_at": "2026-04-18T12:00:00Z",
+  "created_at": "2026-04-18T12:00:00Z",
+  "updated_at": "2026-04-18T14:30:00Z"
+}
+```
+
+> Campos opcionais (`cpf`, `birth_date`, `gender`, `avatar_url`, `accepted_terms_at`, `accepted_privacy_at`) são omitidos do JSON quando `null` (`@JsonInclude(NON_NULL)`).
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `401` | Token ausente, inválido ou expirado |
+| `422` | Usuário não encontrado (conta removida após login) |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("user_id presente", () => pm.expect(body.user_id).to.be.a("string"));
+pm.test("created_at presente", () => pm.expect(body.created_at).to.be.a("string"));
+```
+
+---
+
+### 3. Atualizar Perfil
+
+**`PUT /v1/users/me/profile`**
+
+Atualiza os dados de perfil do usuário autenticado. Todos os campos são opcionais — campos ausentes gravam `null` (substituição completa do perfil).
+
+**Request:**
+
+```http
+PUT {{base_url}}/v1/users/me/profile
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+```
+
+```json
+{
+  "first_name": "João",
   "last_name": "Silva",
   "cpf": "123.456.789-00",
-  "birth_date": "1990-05-15",
-  "gender": "MALE",
+  "birth_date": "1990-05-20",
+  "gender": "male",
   "preferred_language": "pt-BR",
   "preferred_currency": "BRL",
   "newsletter_subscribed": true
 }
 ```
 
-## 5.3. Address
+**Validações:**
 
-### Criar endereço
+| Campo | Obrigatório | Restrições |
+|---|---|---|
+| `first_name` | Não | Máximo 100 caracteres |
+| `last_name` | Não | Máximo 100 caracteres |
+| `cpf` | Não | Formato `XXX.XXX.XXX-XX` |
+| `birth_date` | Não | Data no formato ISO (`YYYY-MM-DD`) |
+| `gender` | Não | Máximo 20 caracteres |
+| `preferred_language` | Não | 2–10 caracteres (ex: `pt-BR`, `en`) |
+| `preferred_currency` | Não | Exatamente 3 caracteres (ex: `BRL`, `USD`) |
+| `newsletter_subscribed` | Não | `true` ou `false` |
 
-`POST {{host}}/api/v1/users/me/addresses`
+**Response `200 OK`:**
+
+```json
+{
+  "id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "user_id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "first_name": "João",
+  "last_name": "Silva",
+  "display_name": "João Silva",
+  "avatar_url": null,
+  "birth_date": "1990-05-20",
+  "gender": "male",
+  "cpf": "123.456.789-00",
+  "preferred_language": "pt-BR",
+  "preferred_currency": "BRL",
+  "newsletter_subscribed": true,
+  "updated_at": "2026-04-19T10:00:00Z"
+}
+```
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Formato inválido (ex: CPF fora do padrão, `preferred_currency` com != 3 chars) |
+| `401` | Token ausente, inválido ou expirado |
+| `409` | Conflito de versão (optimistic locking — outro request modificou o perfil simultaneamente) |
+| `422` | Usuário não encontrado ou regra de negócio violada |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("updated_at presente", () => pm.expect(body.updated_at).to.be.a("string"));
+pm.test("first_name confere", () => pm.expect(body.first_name).to.equal("João"));
+```
+
+---
+
+## Contexto: Addresses
+
+**Base path:** `/v1/users/me/addresses`  
+**Segurança:** Todos os endpoints requerem **JWT válido** no header `Authorization: Bearer {{access_token}}`.
+
+---
+
+### 1. Cadastrar Endereço
+
+**`POST /v1/users/me/addresses`**
+
+Adiciona um novo endereço ao cadastro do usuário autenticado. O primeiro endereço cadastrado é automaticamente marcado como padrão (`is_default: true`).
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/users/me/addresses
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+```
 
 ```json
 {
   "label": "Casa",
-  "recipient_name": "Joao Silva",
-  "street": "Rua Exemplo",
+  "recipient_name": "João Silva",
+  "street": "Rua das Flores",
   "number": "123",
   "complement": "Apto 45",
   "neighborhood": "Centro",
-  "city": "Sao Paulo",
+  "city": "São Paulo",
   "state": "SP",
-  "postal_code": "01001-000",
+  "postal_code": "01310-100",
   "country": "BR",
   "is_billing_address": false
 }
 ```
 
-### Atualizar endereço
+**Validações:**
 
-`PUT {{host}}/api/v1/users/me/addresses/{{addressId}}`
+| Campo | Obrigatório | Restrições |
+|---|---|---|
+| `label` | Não | Máximo 50 caracteres |
+| `recipient_name` | Não | Máximo 150 caracteres |
+| `street` | **Sim** | Máximo 255 caracteres |
+| `number` | Não | Máximo 20 caracteres |
+| `complement` | Não | Máximo 100 caracteres |
+| `neighborhood` | Não | Máximo 100 caracteres |
+| `city` | **Sim** | Máximo 100 caracteres |
+| `state` | **Sim** | Exatamente 2 letras maiúsculas (ex: `SP`, `RJ`) |
+| `postal_code` | **Sim** | Formato `XXXXX-XXX` ou `XXXXXXXX` |
+| `country` | Não | Exatamente 2 caracteres; padrão `BR` se omitido |
+| `is_billing_address` | Não | `true` ou `false`; padrão `false` |
+
+**Response `201 Created`:**
+
+```json
+{
+  "id": "019600a1-1111-7d4e-a5f6-aaaaaaaaaaaa",
+  "user_id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "label": "Casa",
+  "recipient_name": "João Silva",
+  "street": "Rua das Flores",
+  "number": "123",
+  "complement": "Apto 45",
+  "neighborhood": "Centro",
+  "city": "São Paulo",
+  "state": "SP",
+  "postal_code": "01310-100",
+  "country": "BR",
+  "is_default": true,
+  "is_billing_address": false,
+  "created_at": "2026-04-19T10:00:00Z"
+}
+```
+
+> Campos `null` são omitidos do JSON (`@JsonInclude(NON_NULL)`). O campo `is_default` é `true` se for o primeiro endereço ativo do usuário.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Campo obrigatório ausente, `state` inválido ou `postal_code` fora do formato |
+| `401` | Token ausente, inválido ou expirado |
+| `422` | Regra de negócio violada |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 201", () => pm.response.to.have.status(201));
+const body = pm.response.json();
+pm.test("id presente", () => {
+  pm.expect(body.id).to.be.a("string").and.not.be.empty;
+  pm.environment.set("address_id", body.id);
+});
+pm.test("street confere", () => pm.expect(body.street).to.equal("Rua das Flores"));
+pm.test("country padrão BR", () => pm.expect(body.country).to.equal("BR"));
+```
+
+---
+
+### 2. Listar Endereços
+
+**`GET /v1/users/me/addresses`**
+
+Retorna todos os endereços ativos (não removidos) do usuário autenticado.
+
+**Request:**
+
+```http
+GET {{base_url}}/v1/users/me/addresses
+Authorization: Bearer {{access_token}}
+```
+
+**Response `200 OK`:**
+
+```json
+{
+  "items": [
+    {
+      "id": "019600a1-1111-7d4e-a5f6-aaaaaaaaaaaa",
+      "label": "Casa",
+      "recipientName": "João Silva",
+      "street": "Rua das Flores",
+      "number": "123",
+      "complement": "Apto 45",
+      "neighborhood": "Centro",
+      "city": "São Paulo",
+      "state": "SP",
+      "postalCode": "01310-100",
+      "country": "BR",
+      "isDefault": true,
+      "isBillingAddress": false,
+      "createdAt": "2026-04-19T10:00:00Z",
+      "updatedAt": "2026-04-19T10:00:00Z"
+    }
+  ]
+}
+```
+
+> Os campos da lista usam **camelCase** (sem `@JsonProperty`). Campos `null` (ex: `complement`, `label`) aparecem como `null` no JSON.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `401` | Token ausente, inválido ou expirado |
+| `422` | Usuário não encontrado |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("items é array", () => pm.expect(body.items).to.be.an("array"));
+if (body.items.length > 0) {
+  pm.environment.set("address_id", body.items[0].id);
+  pm.test("primeiro item tem id", () => pm.expect(body.items[0].id).to.be.a("string"));
+}
+```
+
+---
+
+### 3. Editar Endereço
+
+**`PUT /v1/users/me/addresses/{id}`**
+
+Atualiza todos os dados de um endereço existente. Substituição completa — campos ausentes são gravados como `null`. O campo `is_default` **não** é alterável por este endpoint.
+
+**Request:**
+
+```http
+PUT {{base_url}}/v1/users/me/addresses/{{address_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+```
 
 ```json
 {
   "label": "Trabalho",
-  "recipient_name": "Joao Silva",
-  "street": "Avenida Nova",
-  "number": "500",
-  "complement": null,
+  "recipient_name": "João Silva",
+  "street": "Avenida Paulista",
+  "number": "1000",
+  "complement": "Sala 201",
   "neighborhood": "Bela Vista",
-  "city": "Sao Paulo",
+  "city": "São Paulo",
   "state": "SP",
   "postal_code": "01310-100",
   "country": "BR",
@@ -287,203 +1073,203 @@ if (json.setupTokenId) pm.environment.set("setupTokenId", json.setupTokenId);
 }
 ```
 
-## 5.4. 2FA
+**Validações:** Idênticas ao `POST /v1/users/me/addresses` (ver tabela acima).
 
-### Iniciar setup
-
-`POST {{host}}/api/v1/users/me/2fa/setup`
-
-Sem body.
-
-### Confirmar setup
-
-`POST {{host}}/api/v1/users/me/2fa/enable`
+**Response `200 OK`:**
 
 ```json
 {
-  "setup_token_id": "{{setupTokenId}}",
-  "code": "123456"
+  "id": "019600a1-1111-7d4e-a5f6-aaaaaaaaaaaa",
+  "user_id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "label": "Trabalho",
+  "recipient_name": "João Silva",
+  "street": "Avenida Paulista",
+  "number": "1000",
+  "complement": "Sala 201",
+  "neighborhood": "Bela Vista",
+  "city": "São Paulo",
+  "state": "SP",
+  "postal_code": "01310-100",
+  "country": "BR",
+  "is_default": true,
+  "is_billing_address": true,
+  "created_at": "2026-04-19T10:00:00Z",
+  "updated_at": "2026-04-19T11:00:00Z"
 }
 ```
 
-## 5.5. Categories
+**Cenários de Erro:**
 
-### Criar categoria
+| Status | Causa |
+|---|---|
+| `400` | Campo obrigatório ausente, `state` inválido ou `postal_code` fora do formato |
+| `401` | Token ausente, inválido ou expirado |
+| `422` | Endereço não encontrado, já removido ou pertence a outro usuário |
 
-`POST {{host}}/api/api/v1/catalog/categories`
+**Scripts de Teste (Tests tab):**
 
-```json
-{
-  "parentId": null,
-  "name": "Eletronicos",
-  "slug": "eletronicos",
-  "description": "Categoria principal",
-  "imageUrl": null,
-  "sortOrder": 1
-}
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("id confere", () => pm.expect(body.id).to.equal(pm.environment.get("address_id")));
+pm.test("updated_at presente", () => pm.expect(body.updated_at).to.be.a("string"));
+pm.test("label atualizado", () => pm.expect(body.label).to.equal("Trabalho"));
 ```
 
-## 5.6. Brands
+---
 
-### Criar marca
+### 4. Remover Endereço
 
-`POST {{host}}/api/api/v1/catalog/brands`
+**`DELETE /v1/users/me/addresses/{id}`**
 
-```json
-{
-  "name": "Acme",
-  "slug": "acme",
-  "description": "Marca de teste",
-  "logoUrl": null
-}
+Aplica soft delete em um endereço. O registro é preservado no banco para manter histórico em pedidos anteriores. Não é possível remover o endereço padrão enquanto houver outros endereços ativos — defina outro como padrão primeiro.
+
+**Request:**
+
+```http
+DELETE {{base_url}}/v1/users/me/addresses/{{address_id}}
+Authorization: Bearer {{access_token}}
 ```
 
-## 5.7. Products
+**Response `204 No Content`:** Body vazio.
 
-### Buscar produtos
+**Cenários de Erro:**
 
-`GET {{host}}/api/api/v1/catalog/products?q=phone&page=0&size=20`
+| Status | Causa |
+|---|---|
+| `401` | Token ausente, inválido ou expirado |
+| `422` | Endereço não encontrado, já removido, pertence a outro usuário ou é o endereço padrão com outros endereços ativos |
 
-### Criar produto
+**Scripts de Teste (Tests tab):**
 
-`POST {{host}}/api/api/v1/catalog/products`
-
-```json
-{
-  "categoryId": "{{categoryId}}",
-  "brandId": "{{brandId}}",
-  "name": "Smartphone X",
-  "slug": "smartphone-x",
-  "description": "Produto de teste",
-  "shortDescription": "Resumo",
-  "sku": "SKU-001",
-  "price": 1999.90,
-  "compareAtPrice": 2299.90,
-  "costPrice": 1500.00,
-  "lowStockThreshold": 5,
-  "weight": 0.4,
-  "width": 8.0,
-  "height": 16.0,
-  "depth": 0.8,
-  "images": []
-}
+```javascript
+pm.test("Status 204", () => pm.response.to.have.status(204));
+pm.test("Body vazio", () => pm.expect(pm.response.text()).to.be.empty);
+pm.environment.unset("address_id");
 ```
 
-### Atualizar produto
+---
 
-`PATCH {{host}}/api/api/v1/catalog/products/{{productId}}`
+## Fluxos de Teste Recomendados
 
-```json
-{
-  "categoryId": "{{categoryId}}",
-  "brandId": "{{brandId}}",
-  "name": "Smartphone X Pro",
-  "slug": "smartphone-x-pro",
-  "description": "Descricao atualizada",
-  "shortDescription": "Resumo atualizado",
-  "sku": "SKU-001",
-  "price": 2099.90,
-  "compareAtPrice": 2399.90,
-  "costPrice": 1600.00,
-  "lowStockThreshold": 4,
-  "weight": 0.42,
-  "width": 8.1,
-  "height": 16.1,
-  "depth": 0.8,
-  "featured": true
-}
-```
+### Fluxo 1: Registro e Primeiro Acesso
 
-### Ajuste de estoque
+Execute as requests na seguinte ordem:
 
-`POST {{host}}/api/api/v1/catalog/products/{{productId}}/stock/adjustments`
+1. **Registrar Usuário** → salva `user_id`
+2. **Login** → salva `access_token` e `refresh_token`
+3. **Obter Usuário Atual** → valida dados do usuário logado
 
-```json
-{
-  "delta": 10,
-  "movementType": "MANUAL_IN",
-  "notes": "Carga inicial",
-  "referenceId": null,
-  "referenceType": null
-}
-```
+### Fluxo 2: Ciclo de Vida da Sessão
 
-### Reserva de estoque
+1. **Login** → obtém tokens iniciais
+2. **Renovar Sessão** → rotaciona tokens (simular access token expirado)
+3. **Obter Usuário Atual** → confirma que novo token funciona
+4. **Logout** → revoga sessão
+5. **Obter Usuário Atual** → deve retornar `401`
 
-`POST {{host}}/api/api/v1/catalog/products/{{productId}}/stock/reservations`
+### Fluxo 3: Verificação de E-mail
 
-```json
-{
-  "quantity": 2,
-  "orderId": null,
-  "ttlMinutes": 15
-}
-```
+1. **Registrar Usuário**
+2. Copiar token do e-mail recebido (ou do log do servidor em dev)
+3. **Verificar E-mail** com o token copiado
+4. **Login** → confirmar que `email_verified: true` no `/v1/users/me`
 
-### Adicionar imagem ao produto
+### Fluxo 4: Login Social (Google)
 
-`POST {{host}}/api/api/v1/catalog/products/{{productId}}/images`
+1. Obter um ID token válido do Google (via SDK do cliente ou `google-auth-library`)
+2. **Login Social** `POST /v1/auth/social/google` com o token → salva `access_token`, `refresh_token`, `user_id`
+3. **Obter Usuário Atual** `GET /v1/users/me` → confirmar `email_verified: true` e `roles: ["customer"]`
+4. Repetir o passo 2 com o mesmo token Google → deve retornar `200 OK` (vínculo já existente, login direto)
+5. Testar com `provider` inválido (ex: `/v1/auth/social/facebook`) → deve retornar `400`
+6. Testar com token expirado → deve retornar `401`
 
-```json
-{
-  "url": "https://cdn.exemplo.com/produto.jpg",
-  "altText": "Imagem frontal",
-  "sortOrder": 1,
-  "primary": true
-}
-```
+### Fluxo 5: Recuperação de Senha
 
-### Reordenar imagens
+1. **Solicitar Redefinição de Senha** com e-mail cadastrado
+2. Verificar retorno `200 OK` (body vazio)
+3. Testar também com e-mail **não cadastrado** → deve retornar `200 OK` (anti-enumeração)
+4. Copiar token do e-mail recebido (ou do log do servidor em dev)
+5. **Confirmar Redefinição de Senha** com o token e a nova senha
+6. **Login** com a nova senha → confirmar acesso restaurado
 
-`PUT {{host}}/api/api/v1/catalog/products/{{productId}}/images/reorder`
+### Fluxo 6: Ativar 2FA
 
-```json
-{
-  "imageIds": ["{{imageId}}"]
-}
-```
+> Pré-requisito: usuário registrado e com sessão ativa (`access_token` no environment).
 
-## 5.8. Upload
+1. **Iniciar Configuração 2FA** `POST /v1/auth/2fa/setup`
+   - Salva `setup_token_id` no environment
+   - Abre o `qr_code_uri` em um gerador de QR Code (ex: `qr-code-generator.com`) ou insere o `secret` manualmente no app autenticador (Google Authenticator, Authy, etc.)
+2. No app autenticador, aguarda o código de 6 dígitos aparecer
+3. **Confirmar Ativação 2FA** `POST /v1/auth/2fa/enable`
+   - Body: `{ "setup_token_id": "{{setup_token_id}}", "code": "<código do app>" }`
+   - Deve retornar `204 No Content`
+4. **Login** `POST /v1/auth/login` → deve retornar `requiresTwoFactor: true` e `transactionId` (sem tokens)
+5. Testar nova chamada ao `/2fa/setup` → deve retornar `409 Conflict` (2FA já ativo)
 
-### Upload de imagem
+### Fluxo 7: Atualizar Perfil do Usuário
 
-`POST {{host}}/api/api/v1/uploads`
+> Pré-requisito: sessão ativa (`access_token` no environment).
 
-- Body: `form-data`
-- Campo: `file`
-- Tipos aceitos no código atual: `jpeg`, `png`, `webp`, `gif`, `svg`
+1. **Obter Perfil Completo** `GET /v1/users` → verificar campos atuais
+2. **Atualizar Perfil** `PUT /v1/users/me/profile` com dados completos → deve retornar `200 OK` com `updated_at` novo
+3. **Obter Perfil Completo** `GET /v1/users` → confirmar que os campos foram atualizados
+4. Testar payload com `cpf` em formato inválido (ex: `12345678900` sem pontuação) → deve retornar `400`
+5. Testar payload com `preferred_currency` de 4 chars (ex: `USDT`) → deve retornar `400`
 
-Observação:
+### Fluxo 8: Gerenciamento de Endereços (CRUD completo)
 
-- `svg` ainda é aceito no código atual, mas isso é um risco de segurança e não deveria ser usado em produção.
+> Pré-requisito: sessão ativa (`access_token` no environment).
 
-## 6. Ordem sugerida de teste manual
+1. **Listar Endereços** `GET /v1/users/me/addresses` → array vazio (nenhum endereço ainda)
+2. **Cadastrar Endereço** `POST /v1/users/me/addresses` com dados válidos
+   - Deve retornar `201 Created` com `is_default: true` (primeiro endereço)
+   - Script salva `address_id` no environment
+3. **Listar Endereços** `GET /v1/users/me/addresses` → 1 item, `isDefault: true`
+4. **Cadastrar segundo Endereço** → deve retornar `is_default: false`
+5. **Listar Endereços** → 2 itens
+6. **Editar Endereço** `PUT /v1/users/me/addresses/{{address_id}}` com novos dados → `200 OK`, `updated_at` diferente de `created_at`
+7. **Remover Endereço padrão** `DELETE /v1/users/me/addresses/{{address_id_do_padrao}}` enquanto o segundo existe → deve retornar `422` (CANNOT_DELETE_DEFAULT_ADDRESS)
+8. **Remover o segundo Endereço** (não padrão) → deve retornar `204 No Content`
+9. **Listar Endereços** → 1 item (só o padrão restou)
+10. **Remover o Endereço padrão** (único ativo) → deve retornar `204 No Content` (permitido quando é o único)
+11. **Listar Endereços** → array vazio
 
-1. Registrar usuário
-2. Login
-3. `GET /api/v1/users/me`
-4. Setup 2FA
-5. Enable 2FA
-6. Login novamente para capturar `transactionId`
-7. Verificar 2FA
-8. Criar endereço
-9. Criar categoria
-10. Criar marca
-11. Criar produto
-12. Ajustar estoque
-13. Publicar produto
-14. Buscar produto
-15. Fazer upload
-16. Adicionar imagem ao produto
+### Fluxo 9: Login com 2FA Ativo
 
-## 7. Resumo da análise
+> Pré-requisito: conta com 2FA ativado (Fluxo 6 concluído).
 
-O projeto hoje expõe 35 endpoints de negócio em `modules/api`.
+1. **Login** `POST /v1/auth/login` com credenciais corretas
+   - Resposta: `requiresTwoFactor: true`, `transactionId` salvo no environment
+   - **Sem** `accessToken` na resposta
+2. No app autenticador, obter código TOTP atual (válido por 30 s, tolerância de ±1 período)
+3. **Verificar Código 2FA** `POST /v1/auth/2fa/verify`
+   - Body: `{ "transactionId": "{{transaction_id}}", "code": "<código do app>" }`
+   - Deve retornar `200 OK` com `accessToken`, `refreshToken`
+   - Scripts salvam tokens no environment automaticamente
+4. **Obter Usuário Atual** `GET /v1/users/me` → confirmar acesso com o novo token
+5. **Testar brute-force:** repetir `/2fa/verify` com código errado 5 vezes
+   - Após 5 tentativas: próxima chamada deve retornar `401` com mensagem de conta bloqueada
+   - Aguardar 15 minutos (ou ajustar `lock_expires_at` no banco em ambiente dev) para desbloquear
 
-Principais desvios encontrados:
+---
 
-- catálogo e upload estão com path final duplicado em `/api/api/...`
-- alguns endpoints descritos como públicos no controller estão protegidos na prática pelo `SecurityConfig`
-- `docs/postman.md` antigo não refletia o estado real do código
+## Endpoints Disponíveis (Health e Docs)
 
-Antes de compartilhar a collection com time ou QA, vale corrigir a inconsistência de paths no código para evitar documentação “especial” só para o ambiente atual.
+| Endpoint | Método | Descrição |
+|---|---|---|
+| `GET /actuator/health` | `GET` | Health check da aplicação |
+| `GET /swagger-ui.html` | `GET` | Interface Swagger UI |
+| `GET /v3/api-docs` | `GET` | Spec OpenAPI 3.0 em JSON |
+
+---
+
+## Configurações da Aplicação
+
+| Configuração | Valor |
+|---|---|
+| Porta | `8080` |
+| Context path | `/api` |
+| JWT access token | Expira em **15 minutos** |
+| JWT refresh token | Expira em **7 dias** |
+| CORS permitido | `localhost:3000`, `localhost:4200` |

@@ -157,12 +157,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      * @param request requisição recebida
      * @return {@code true} se o filtro deve ser pulado para a rota da requisição
      */
+    // Auth sub-paths that require JWT must NOT be skipped here.
+    // /2fa/setup and /2fa/enable are intentionally excluded: they require JWT.
+    private static final java.util.List<String> SKIP_JWT_PATHS = java.util.List.of(
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
+            "/api/v1/auth/refresh",
+            "/api/v1/auth/logout",
+            "/api/v1/auth/verify-email",
+            "/api/v1/auth/password/",
+            "/api/v1/auth/social/",
+            "/api/v1/auth/2fa/verify"
+    );
+
     @Override
     protected boolean shouldNotFilter(final HttpServletRequest request) {
         final String path = request.getRequestURI();
-        return path.startsWith("/api/v1/auth/")   // login, registro, refresh, etc.
-                || path.startsWith("/actuator/")  // health check e métricas
-                || path.startsWith("/swagger-ui/") // interface Swagger
-                || path.startsWith("/v3/api-docs"); // spec OpenAPI
+        if (path.startsWith("/actuator/") || path.startsWith("/swagger-ui/") || path.startsWith("/v3/api-docs")) {
+            return true;
+        }
+        return SKIP_JWT_PATHS.stream().anyMatch(path::startsWith);
     }
 }

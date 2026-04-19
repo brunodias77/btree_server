@@ -36,6 +36,7 @@ public class User extends AggregateRoot<UserId> {
     private Profile profile;
     private NotificationPreference notificationPreference;
     private final java.util.Set<String> roles = new java.util.HashSet<>();
+    private boolean requiresPassword = true;
 
     private User(
             final UserId id,
@@ -103,6 +104,7 @@ public class User extends AggregateRoot<UserId> {
 
         user.profile = Profile.create(user.getId());
         user.notificationPreference = NotificationPreference.create(user.getId());
+        user.requiresPassword = true;
 
         user.validate(notification);
         if (notification.hasError()) {
@@ -148,6 +150,7 @@ public class User extends AggregateRoot<UserId> {
 
         user.profile = Profile.create(user.getId());
         user.notificationPreference = NotificationPreference.create(user.getId());
+        user.requiresPassword = false;
 
         user.validate(notification);
         if (notification.hasError()) {
@@ -316,6 +319,7 @@ public class User extends AggregateRoot<UserId> {
     public Profile getProfile() { return profile; }
     public NotificationPreference getNotificationPreference() { return notificationPreference; }
     public java.util.Set<String> getRoles() { return java.util.Collections.unmodifiableSet(roles); }
+    public boolean isRequiresPassword() { return requiresPassword; }
 
     public void addRole(String role) {
         if (role != null && !role.isBlank()) {
