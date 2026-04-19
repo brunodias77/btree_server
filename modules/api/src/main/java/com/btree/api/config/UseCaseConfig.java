@@ -1,5 +1,8 @@
 package com.btree.api.config;
 
+import com.btree.application.usecase.catalog.brand.create.CreateBrandUseCase;
+import com.btree.application.usecase.catalog.brand.list_all.ListAllBrandUseCase;
+import com.btree.application.usecase.catalog.brand.update.UpdateBrandUseCase;
 import com.btree.application.usecase.job.clean_expired_tokens.CleanupExpiredTokensJob;
 import com.btree.application.usecase.job.process_domain_event.ProcessDomainEventsJob;
 import com.btree.application.usecase.job.retry_failed_event.RetryFailedEventsJob;
@@ -22,6 +25,7 @@ import com.btree.application.usecase.user.auth.verify_two_factor.VerifyTwoFactor
 import com.btree.application.usecase.user.get_current_user.GetCurrentUserUseCase;
 import com.btree.application.usecase.user.get_profile.GetProfileUseCase;
 import com.btree.application.usecase.user.update_profile.UpdateProfileUseCase;
+import com.btree.domain.catalog.gateway.BrandGateway;
 import com.btree.domain.user.gateway.*;
 import com.btree.infrastructure.config.JwtConfig;
 import com.btree.shared.contract.*;
@@ -300,9 +304,27 @@ public class UseCaseConfig {
     }
 
 
+    @Bean
+    public CreateBrandUseCase createBrandUseCase(
+            final BrandGateway brandGateway,
+            final DomainEventPublisher eventPublisher,
+            final TransactionManager transactionManager
+    ) {
+        return new CreateBrandUseCase(brandGateway, eventPublisher, transactionManager);
+    }
 
+    @Bean
+    public ListAllBrandUseCase listAllBrandUseCase(final BrandGateway brandGateway) {
+        return new ListAllBrandUseCase(brandGateway);
+    }
 
-
+    @Bean
+    public UpdateBrandUseCase updateBrandUseCase(
+            final BrandGateway brandGateway,
+            final TransactionManager transactionManager
+    ) {
+        return new UpdateBrandUseCase(brandGateway, transactionManager);
+    }
 
 
 
@@ -339,22 +361,9 @@ public class UseCaseConfig {
 //
 //    // ── Catalog ───────────────────────────────────────────────────────────────
 //
-//    @Bean
-//    public CreateBrandUseCase createBrandUseCase(
-//            final BrandGateway brandGateway,
-//            final DomainEventPublisher eventPublisher,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new CreateBrandUseCase(brandGateway, eventPublisher, transactionManager);
-//    }
+
 //
-//    @Bean
-//    public UpdateBrandUseCase updateBrandUseCase(
-//            final BrandGateway brandGateway,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new UpdateBrandUseCase(brandGateway, transactionManager);
-//    }
+
 //
 //    @Bean
 //    public CreateCategoryUseCase createCategoryUseCase(
