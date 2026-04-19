@@ -2,10 +2,13 @@ package com.btree.api.controller.user;
 
 import com.btree.api.dto.request.user.UpdateProfileRequest;
 import com.btree.api.dto.response.user.CurrentUserResponse;
+import com.btree.api.dto.response.user.GetProfileResponse;
 import com.btree.api.dto.response.user.UpdateProfileResponse;
 import com.btree.application.usecase.user.get_current_user.GetCurrentUserInput;
 import com.btree.application.usecase.user.get_current_user.GetCurrentUserOutput;
 import com.btree.application.usecase.user.get_current_user.GetCurrentUserUseCase;
+import com.btree.application.usecase.user.get_profile.GetProfileCommand;
+import com.btree.application.usecase.user.get_profile.GetProfileUseCase;
 import com.btree.application.usecase.user.update_profile.UpdateProfileCommand;
 import com.btree.application.usecase.user.update_profile.UpdateProfileUseCase;
 import com.btree.shared.domain.DomainException;
@@ -27,10 +30,16 @@ public class UserController {
 
     private final GetCurrentUserUseCase getCurrentUserUseCase;
     private final UpdateProfileUseCase updateProfileUseCase;
+    private final GetProfileUseCase getProfileUseCase;
 
-    public UserController(GetCurrentUserUseCase getCurrentUserUseCase, UpdateProfileUseCase updateProfileUseCase) {
+    public UserController(
+            final GetCurrentUserUseCase getCurrentUserUseCase,
+            final UpdateProfileUseCase updateProfileUseCase,
+            final GetProfileUseCase getProfileUseCase
+    ) {
         this.getCurrentUserUseCase = getCurrentUserUseCase;
         this.updateProfileUseCase = updateProfileUseCase;
+        this.getProfileUseCase = getProfileUseCase;
     }
 
     @GetMapping("/me")
@@ -44,7 +53,7 @@ public class UserController {
             @ApiResponse(responseCode = "401", description = "Token ausente ou inválido"),
             @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
     })
-    public CurrentUserResponse me(){
+    public CurrentUserResponse me() {
         final Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         final String userId = auth.getName();
 
@@ -54,7 +63,6 @@ public class UserController {
 
         return CurrentUserResponse.from(output);
     }
-
 
     @PutMapping("/me/profile")
     @ResponseStatus(HttpStatus.OK)
@@ -89,6 +97,24 @@ public class UserController {
                 updateProfileUseCase.execute(command)
                         .getOrElseThrow(n -> DomainException.with(n.getErrors()))
         );
+    }
+
+    @GetMapping
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(
+            summary = "Obter perfil",
+            description = "Retorna o perfil completo do usuário autenticado, incluindo dados pessoais, " +
+                    "preferências e metadados de aceite de termos."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Perfil retornado com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido"),
+            @ApiResponse(responseCode = "404", description = "Perfil não encontrado")
+    })
+    public GetProfileResponse get() {
+        return getProfileUseCase.execute(new GetProfileCommand(currentUserId()))
+                .map(GetProfileResponse::from)
+                .getOrElseThrow(n -> DomainException.with(n.getErrors()));
     }
 
     private String currentUserId() {

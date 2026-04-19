@@ -14,6 +14,7 @@ Crie um Environment no Postman chamado **btree-local** com as seguintes variáve
 | `user_id` | _(vazio)_ | Preenchido automaticamente após login |
 | `transaction_id` | _(vazio)_ | Preenchido automaticamente quando login detecta 2FA ativo |
 | `setup_token_id` | _(vazio)_ | Preenchido automaticamente durante configuração de 2FA |
+| `address_id` | _(vazio)_ | Preenchido após cadastrar ou listar endereços |
 
 ### Authorization Global
 
@@ -744,6 +745,409 @@ pm.test("Email presente", () => pm.expect(body.email).to.be.a("string"));
 pm.test("Roles presente", () => pm.expect(body.roles).to.be.an("array").and.not.be.empty);
 ```
 
+### 2. Obter Perfil Completo
+
+**`GET /v1/users`**
+
+Retorna o perfil detalhado do usuário autenticado (dados cadastrais, preferências, datas de aceite de termos).
+
+**Request:**
+
+```http
+GET {{base_url}}/v1/users
+Authorization: Bearer {{access_token}}
+```
+
+**Response `200 OK`:**
+
+```json
+{
+  "id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "user_id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "first_name": "João",
+  "last_name": "Silva",
+  "display_name": "João Silva",
+  "avatar_url": "https://cdn.exemplo.com/avatars/joao.jpg",
+  "birth_date": "1990-05-20",
+  "gender": "male",
+  "cpf": "123.456.789-00",
+  "preferred_language": "pt-BR",
+  "preferred_currency": "BRL",
+  "newsletter_subscribed": true,
+  "accepted_terms_at": "2026-04-18T12:00:00Z",
+  "accepted_privacy_at": "2026-04-18T12:00:00Z",
+  "created_at": "2026-04-18T12:00:00Z",
+  "updated_at": "2026-04-18T14:30:00Z"
+}
+```
+
+> Campos opcionais (`cpf`, `birth_date`, `gender`, `avatar_url`, `accepted_terms_at`, `accepted_privacy_at`) são omitidos do JSON quando `null` (`@JsonInclude(NON_NULL)`).
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `401` | Token ausente, inválido ou expirado |
+| `422` | Usuário não encontrado (conta removida após login) |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("user_id presente", () => pm.expect(body.user_id).to.be.a("string"));
+pm.test("created_at presente", () => pm.expect(body.created_at).to.be.a("string"));
+```
+
+---
+
+### 3. Atualizar Perfil
+
+**`PUT /v1/users/me/profile`**
+
+Atualiza os dados de perfil do usuário autenticado. Todos os campos são opcionais — campos ausentes gravam `null` (substituição completa do perfil).
+
+**Request:**
+
+```http
+PUT {{base_url}}/v1/users/me/profile
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+```
+
+```json
+{
+  "first_name": "João",
+  "last_name": "Silva",
+  "cpf": "123.456.789-00",
+  "birth_date": "1990-05-20",
+  "gender": "male",
+  "preferred_language": "pt-BR",
+  "preferred_currency": "BRL",
+  "newsletter_subscribed": true
+}
+```
+
+**Validações:**
+
+| Campo | Obrigatório | Restrições |
+|---|---|---|
+| `first_name` | Não | Máximo 100 caracteres |
+| `last_name` | Não | Máximo 100 caracteres |
+| `cpf` | Não | Formato `XXX.XXX.XXX-XX` |
+| `birth_date` | Não | Data no formato ISO (`YYYY-MM-DD`) |
+| `gender` | Não | Máximo 20 caracteres |
+| `preferred_language` | Não | 2–10 caracteres (ex: `pt-BR`, `en`) |
+| `preferred_currency` | Não | Exatamente 3 caracteres (ex: `BRL`, `USD`) |
+| `newsletter_subscribed` | Não | `true` ou `false` |
+
+**Response `200 OK`:**
+
+```json
+{
+  "id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "user_id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "first_name": "João",
+  "last_name": "Silva",
+  "display_name": "João Silva",
+  "avatar_url": null,
+  "birth_date": "1990-05-20",
+  "gender": "male",
+  "cpf": "123.456.789-00",
+  "preferred_language": "pt-BR",
+  "preferred_currency": "BRL",
+  "newsletter_subscribed": true,
+  "updated_at": "2026-04-19T10:00:00Z"
+}
+```
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Formato inválido (ex: CPF fora do padrão, `preferred_currency` com != 3 chars) |
+| `401` | Token ausente, inválido ou expirado |
+| `409` | Conflito de versão (optimistic locking — outro request modificou o perfil simultaneamente) |
+| `422` | Usuário não encontrado ou regra de negócio violada |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("updated_at presente", () => pm.expect(body.updated_at).to.be.a("string"));
+pm.test("first_name confere", () => pm.expect(body.first_name).to.equal("João"));
+```
+
+---
+
+## Contexto: Addresses
+
+**Base path:** `/v1/users/me/addresses`  
+**Segurança:** Todos os endpoints requerem **JWT válido** no header `Authorization: Bearer {{access_token}}`.
+
+---
+
+### 1. Cadastrar Endereço
+
+**`POST /v1/users/me/addresses`**
+
+Adiciona um novo endereço ao cadastro do usuário autenticado. O primeiro endereço cadastrado é automaticamente marcado como padrão (`is_default: true`).
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/users/me/addresses
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+```
+
+```json
+{
+  "label": "Casa",
+  "recipient_name": "João Silva",
+  "street": "Rua das Flores",
+  "number": "123",
+  "complement": "Apto 45",
+  "neighborhood": "Centro",
+  "city": "São Paulo",
+  "state": "SP",
+  "postal_code": "01310-100",
+  "country": "BR",
+  "is_billing_address": false
+}
+```
+
+**Validações:**
+
+| Campo | Obrigatório | Restrições |
+|---|---|---|
+| `label` | Não | Máximo 50 caracteres |
+| `recipient_name` | Não | Máximo 150 caracteres |
+| `street` | **Sim** | Máximo 255 caracteres |
+| `number` | Não | Máximo 20 caracteres |
+| `complement` | Não | Máximo 100 caracteres |
+| `neighborhood` | Não | Máximo 100 caracteres |
+| `city` | **Sim** | Máximo 100 caracteres |
+| `state` | **Sim** | Exatamente 2 letras maiúsculas (ex: `SP`, `RJ`) |
+| `postal_code` | **Sim** | Formato `XXXXX-XXX` ou `XXXXXXXX` |
+| `country` | Não | Exatamente 2 caracteres; padrão `BR` se omitido |
+| `is_billing_address` | Não | `true` ou `false`; padrão `false` |
+
+**Response `201 Created`:**
+
+```json
+{
+  "id": "019600a1-1111-7d4e-a5f6-aaaaaaaaaaaa",
+  "user_id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "label": "Casa",
+  "recipient_name": "João Silva",
+  "street": "Rua das Flores",
+  "number": "123",
+  "complement": "Apto 45",
+  "neighborhood": "Centro",
+  "city": "São Paulo",
+  "state": "SP",
+  "postal_code": "01310-100",
+  "country": "BR",
+  "is_default": true,
+  "is_billing_address": false,
+  "created_at": "2026-04-19T10:00:00Z"
+}
+```
+
+> Campos `null` são omitidos do JSON (`@JsonInclude(NON_NULL)`). O campo `is_default` é `true` se for o primeiro endereço ativo do usuário.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Campo obrigatório ausente, `state` inválido ou `postal_code` fora do formato |
+| `401` | Token ausente, inválido ou expirado |
+| `422` | Regra de negócio violada |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 201", () => pm.response.to.have.status(201));
+const body = pm.response.json();
+pm.test("id presente", () => {
+  pm.expect(body.id).to.be.a("string").and.not.be.empty;
+  pm.environment.set("address_id", body.id);
+});
+pm.test("street confere", () => pm.expect(body.street).to.equal("Rua das Flores"));
+pm.test("country padrão BR", () => pm.expect(body.country).to.equal("BR"));
+```
+
+---
+
+### 2. Listar Endereços
+
+**`GET /v1/users/me/addresses`**
+
+Retorna todos os endereços ativos (não removidos) do usuário autenticado.
+
+**Request:**
+
+```http
+GET {{base_url}}/v1/users/me/addresses
+Authorization: Bearer {{access_token}}
+```
+
+**Response `200 OK`:**
+
+```json
+{
+  "items": [
+    {
+      "id": "019600a1-1111-7d4e-a5f6-aaaaaaaaaaaa",
+      "label": "Casa",
+      "recipientName": "João Silva",
+      "street": "Rua das Flores",
+      "number": "123",
+      "complement": "Apto 45",
+      "neighborhood": "Centro",
+      "city": "São Paulo",
+      "state": "SP",
+      "postalCode": "01310-100",
+      "country": "BR",
+      "isDefault": true,
+      "isBillingAddress": false,
+      "createdAt": "2026-04-19T10:00:00Z",
+      "updatedAt": "2026-04-19T10:00:00Z"
+    }
+  ]
+}
+```
+
+> Os campos da lista usam **camelCase** (sem `@JsonProperty`). Campos `null` (ex: `complement`, `label`) aparecem como `null` no JSON.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `401` | Token ausente, inválido ou expirado |
+| `422` | Usuário não encontrado |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("items é array", () => pm.expect(body.items).to.be.an("array"));
+if (body.items.length > 0) {
+  pm.environment.set("address_id", body.items[0].id);
+  pm.test("primeiro item tem id", () => pm.expect(body.items[0].id).to.be.a("string"));
+}
+```
+
+---
+
+### 3. Editar Endereço
+
+**`PUT /v1/users/me/addresses/{id}`**
+
+Atualiza todos os dados de um endereço existente. Substituição completa — campos ausentes são gravados como `null`. O campo `is_default` **não** é alterável por este endpoint.
+
+**Request:**
+
+```http
+PUT {{base_url}}/v1/users/me/addresses/{{address_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+```
+
+```json
+{
+  "label": "Trabalho",
+  "recipient_name": "João Silva",
+  "street": "Avenida Paulista",
+  "number": "1000",
+  "complement": "Sala 201",
+  "neighborhood": "Bela Vista",
+  "city": "São Paulo",
+  "state": "SP",
+  "postal_code": "01310-100",
+  "country": "BR",
+  "is_billing_address": true
+}
+```
+
+**Validações:** Idênticas ao `POST /v1/users/me/addresses` (ver tabela acima).
+
+**Response `200 OK`:**
+
+```json
+{
+  "id": "019600a1-1111-7d4e-a5f6-aaaaaaaaaaaa",
+  "user_id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "label": "Trabalho",
+  "recipient_name": "João Silva",
+  "street": "Avenida Paulista",
+  "number": "1000",
+  "complement": "Sala 201",
+  "neighborhood": "Bela Vista",
+  "city": "São Paulo",
+  "state": "SP",
+  "postal_code": "01310-100",
+  "country": "BR",
+  "is_default": true,
+  "is_billing_address": true,
+  "created_at": "2026-04-19T10:00:00Z",
+  "updated_at": "2026-04-19T11:00:00Z"
+}
+```
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Campo obrigatório ausente, `state` inválido ou `postal_code` fora do formato |
+| `401` | Token ausente, inválido ou expirado |
+| `422` | Endereço não encontrado, já removido ou pertence a outro usuário |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("id confere", () => pm.expect(body.id).to.equal(pm.environment.get("address_id")));
+pm.test("updated_at presente", () => pm.expect(body.updated_at).to.be.a("string"));
+pm.test("label atualizado", () => pm.expect(body.label).to.equal("Trabalho"));
+```
+
+---
+
+### 4. Remover Endereço
+
+**`DELETE /v1/users/me/addresses/{id}`**
+
+Aplica soft delete em um endereço. O registro é preservado no banco para manter histórico em pedidos anteriores. Não é possível remover o endereço padrão enquanto houver outros endereços ativos — defina outro como padrão primeiro.
+
+**Request:**
+
+```http
+DELETE {{base_url}}/v1/users/me/addresses/{{address_id}}
+Authorization: Bearer {{access_token}}
+```
+
+**Response `204 No Content`:** Body vazio.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `401` | Token ausente, inválido ou expirado |
+| `422` | Endereço não encontrado, já removido, pertence a outro usuário ou é o endereço padrão com outros endereços ativos |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 204", () => pm.response.to.have.status(204));
+pm.test("Body vazio", () => pm.expect(pm.response.text()).to.be.empty);
+pm.environment.unset("address_id");
+```
+
 ---
 
 ## Fluxos de Teste Recomendados
@@ -803,7 +1207,35 @@ Execute as requests na seguinte ordem:
 4. **Login** `POST /v1/auth/login` → deve retornar `requiresTwoFactor: true` e `transactionId` (sem tokens)
 5. Testar nova chamada ao `/2fa/setup` → deve retornar `409 Conflict` (2FA já ativo)
 
-### Fluxo 7: Login com 2FA Ativo
+### Fluxo 7: Atualizar Perfil do Usuário
+
+> Pré-requisito: sessão ativa (`access_token` no environment).
+
+1. **Obter Perfil Completo** `GET /v1/users` → verificar campos atuais
+2. **Atualizar Perfil** `PUT /v1/users/me/profile` com dados completos → deve retornar `200 OK` com `updated_at` novo
+3. **Obter Perfil Completo** `GET /v1/users` → confirmar que os campos foram atualizados
+4. Testar payload com `cpf` em formato inválido (ex: `12345678900` sem pontuação) → deve retornar `400`
+5. Testar payload com `preferred_currency` de 4 chars (ex: `USDT`) → deve retornar `400`
+
+### Fluxo 8: Gerenciamento de Endereços (CRUD completo)
+
+> Pré-requisito: sessão ativa (`access_token` no environment).
+
+1. **Listar Endereços** `GET /v1/users/me/addresses` → array vazio (nenhum endereço ainda)
+2. **Cadastrar Endereço** `POST /v1/users/me/addresses` com dados válidos
+   - Deve retornar `201 Created` com `is_default: true` (primeiro endereço)
+   - Script salva `address_id` no environment
+3. **Listar Endereços** `GET /v1/users/me/addresses` → 1 item, `isDefault: true`
+4. **Cadastrar segundo Endereço** → deve retornar `is_default: false`
+5. **Listar Endereços** → 2 itens
+6. **Editar Endereço** `PUT /v1/users/me/addresses/{{address_id}}` com novos dados → `200 OK`, `updated_at` diferente de `created_at`
+7. **Remover Endereço padrão** `DELETE /v1/users/me/addresses/{{address_id_do_padrao}}` enquanto o segundo existe → deve retornar `422` (CANNOT_DELETE_DEFAULT_ADDRESS)
+8. **Remover o segundo Endereço** (não padrão) → deve retornar `204 No Content`
+9. **Listar Endereços** → 1 item (só o padrão restou)
+10. **Remover o Endereço padrão** (único ativo) → deve retornar `204 No Content` (permitido quando é o único)
+11. **Listar Endereços** → array vazio
+
+### Fluxo 9: Login com 2FA Ativo
 
 > Pré-requisito: conta com 2FA ativado (Fluxo 6 concluído).
 
