@@ -1,13 +1,13 @@
 # Guia Atualizado da API no Postman
 
-Este documento reflete o estado atual do código em `modules/api`, `SecurityConfig` e `application.yaml`.
+Este documento reflete o estado atual do worktree `focused-buck`, considerando os controllers reais em `modules/api`, o `SecurityConfig` e o `server.servlet.context-path: /api`.
 
 ## 1. O que mudou nesta revisão
 
-- O inventário de endpoints foi atualizado a partir dos controllers reais.
-- A exigência de autenticação foi conferida no `SecurityConfig`, não apenas nas anotações Swagger.
-- Os paths finais foram corrigidos considerando `server.servlet.context-path: /api`.
-- Foram registrados os desvios atuais da API para evitar testes em URLs erradas.
+- O endpoint `UpdateProfile` foi analisado no `UserController.java`.
+- O inventário foi reduzido aos endpoints realmente expostos neste worktree.
+- As rotas de profile, address, 2FA, catalog e upload que não existem neste worktree foram removidas dos testes sugeridos.
+- A seção de Postman agora deixa claro quais rotas públicas existem no código e quais rotas só aparecem no `SecurityConfig`.
 
 ## 2. Observações importantes
 
@@ -16,30 +16,39 @@ Este documento reflete o estado atual do código em `modules/api`, `SecurityConf
 - Host local: `http://localhost:8080`
 - Context path global: `/api`
 
-Isso significa que:
+Endpoints com `@RequestMapping("/v1/...")` ficam em:
 
-- endpoints com `@RequestMapping("/v1/...")` ficam em `http://localhost:8080/api/v1/...`
-- endpoints com `@RequestMapping("/api/v1/...")` ficam em `http://localhost:8080/api/api/v1/...`
+```text
+http://localhost:8080/api/v1/...
+```
 
-Hoje existe essa inconsistência no código.
+### 2.2. Controllers reais neste worktree
 
-### 2.2. Inconsistência atual de paths
+Hoje existem apenas estes controllers em `modules/api`:
 
-Os controllers de `auth`, `users`, `profile`, `address` e `2fa` usam `/v1/...`.
+- `AuthController`
+- `UserController`
+- `CouponController`
 
-Os controllers de `catalog` e `uploads` usam `/api/v1/...`.
+### 2.3. Status do UpdateProfile
 
-Como a aplicação já aplica `/api` no servidor, as rotas finais de catálogo e upload ficam duplicadas com `/api/api/...`.
+O endpoint `PUT /v1/users/me/profile` não está implementado neste worktree.
 
-Exemplos:
+No `UserController.java`, existe apenas:
 
-- Auth login: `http://localhost:8080/api/v1/auth/login`
-- Categories list: `http://localhost:8080/api/api/v1/catalog/categories`
-- Upload: `http://localhost:8080/api/api/v1/uploads`
+```text
+GET /v1/users/me
+```
 
-### 2.3. Autenticação real
+Também há beans de `GetProfileUseCase` e `UpdateProfileUseCase` comentados em `UseCaseConfig.java`. Portanto, uma request como esta deve retornar `404 Not Found` no estado atual:
 
-O `SecurityConfig` libera apenas estas rotas:
+```text
+PUT {{host}}/api/v1/users/me/profile
+```
+
+### 2.4. Autenticação real
+
+O `SecurityConfig` libera estas rotas:
 
 - `/v1/auth/register`
 - `/v1/auth/login`
@@ -53,16 +62,15 @@ O `SecurityConfig` libera apenas estas rotas:
 - `/swagger-ui/**`
 - `/v3/api-docs/**`
 
+Mas, neste worktree, só estas rotas públicas têm controller implementado:
+
+- `/v1/auth/register`
+- `/v1/auth/login`
+- `/v1/auth/refresh`
+- `/v1/auth/verify-email`
+- `/v1/auth/logout`
+
 Todo o restante exige JWT Bearer.
-
-Isso é importante porque alguns controllers de catálogo descrevem endpoints como públicos, mas o `SecurityConfig` atual os protege.
-
-### 2.4. Alertas de segurança já identificados
-
-- Login social Google ainda não valida corretamente `aud`, `iss` e `email_verified`.
-- Upload ainda aceita `SVG`, e os arquivos ficam publicamente acessíveis.
-- Há segredos default no `application.yaml`.
-- O login ainda não aplica lockout/failed-attempt tracking de forma efetiva.
 
 ## 3. Configurando o Postman
 
@@ -75,13 +83,7 @@ Crie um environment chamado `BTree Local` com estas variáveis:
 | `host` | `http://localhost:8080` | host da aplicação |
 | `token` | | access token JWT |
 | `refreshToken` | | refresh token |
-| `transactionId` | | transaction id do fluxo 2FA |
-| `setupTokenId` | | setup token do fluxo de ativação de 2FA |
-| `categoryId` | | categoria para testes de catálogo |
-| `brandId` | | marca para testes de catálogo |
-| `productId` | | produto para testes |
-| `imageId` | | imagem de produto para testes |
-| `addressId` | | endereço para testes |
+| `couponId` | | cupom para teste de atualização |
 
 ### 3.2. Authorization
 
@@ -90,79 +92,62 @@ Na collection, configure:
 - Type: `Bearer Token`
 - Token: `{{token}}`
 
+Nas requests públicas de auth, deixe `Authorization` como `No Auth` ou herde a collection sem token apenas depois de limpar `{{token}}`.
+
 ### 3.3. Script de captura de tokens
 
-Use este script em `login`, `refresh`, `social login` e `2fa verify`:
+Use este script em `login` e `refresh`:
 
 ```javascript
 const json = pm.response.json();
 
 if (json.accessToken) pm.environment.set("token", json.accessToken);
 if (json.refreshToken) pm.environment.set("refreshToken", json.refreshToken);
-if (json.transactionId) pm.environment.set("transactionId", json.transactionId);
-if (json.setup_token_id) pm.environment.set("setupTokenId", json.setup_token_id);
-if (json.setupTokenId) pm.environment.set("setupTokenId", json.setupTokenId);
 ```
 
 ## 4. Inventário Real de Endpoints
 
-## 4.1. Públicos
+### 4.1. Públicos implementados
 
 | Grupo | Método | URL final |
 |---|---|---|
 | Auth | `POST` | `{{host}}/api/v1/auth/register` |
 | Auth | `POST` | `{{host}}/api/v1/auth/login` |
 | Auth | `POST` | `{{host}}/api/v1/auth/verify-email` |
-| Auth | `POST` | `{{host}}/api/v1/auth/logout` |
-| Auth | `POST` | `{{host}}/api/v1/auth/social/{provider}` |
-| Auth | `POST` | `{{host}}/api/v1/auth/password/forgot` |
 | Auth | `POST` | `{{host}}/api/v1/auth/refresh` |
-| Auth | `POST` | `{{host}}/api/v1/auth/2fa/verify` |
+| Auth | `POST` | `{{host}}/api/v1/auth/logout` |
 
-## 4.2. Protegidos por JWT
+### 4.2. Protegidos por JWT
 
 | Grupo | Método | URL final |
 |---|---|---|
-| Auth | `POST` | `{{host}}/api/v1/auth/sessions/revoke-all` |
 | Users | `GET` | `{{host}}/api/v1/users/me` |
-| Profile | `GET` | `{{host}}/api/v1/users/me/profile` |
-| Profile | `PUT` | `{{host}}/api/v1/users/me/profile` |
-| 2FA | `POST` | `{{host}}/api/v1/users/me/2fa/setup` |
-| 2FA | `POST` | `{{host}}/api/v1/users/me/2fa/enable` |
-| Address | `GET` | `{{host}}/api/v1/users/me/addresses` |
-| Address | `POST` | `{{host}}/api/v1/users/me/addresses` |
-| Address | `PUT` | `{{host}}/api/v1/users/me/addresses/{id}` |
-| Address | `DELETE` | `{{host}}/api/v1/users/me/addresses/{id}` |
-| Address | `PATCH` | `{{host}}/api/v1/users/me/addresses/{id}/default` |
-| Categories | `GET` | `{{host}}/api/api/v1/catalog/categories` |
-| Categories | `POST` | `{{host}}/api/api/v1/catalog/categories` |
-| Categories | `GET` | `{{host}}/api/api/v1/catalog/categories/{id}` |
-| Categories | `PUT` | `{{host}}/api/api/v1/catalog/categories/{id}` |
-| Categories | `GET` | `{{host}}/api/api/v1/catalog/categories/{categoryId}/products` |
-| Brands | `POST` | `{{host}}/api/api/v1/catalog/brands` |
-| Brands | `PUT` | `{{host}}/api/api/v1/catalog/brands/{id}` |
-| Brands | `GET` | `{{host}}/api/api/v1/catalog/brands/{brandId}/products` |
-| Products | `GET` | `{{host}}/api/api/v1/catalog/products` |
-| Products | `GET` | `{{host}}/api/api/v1/catalog/products/featured` |
-| Products | `GET` | `{{host}}/api/api/v1/catalog/products/{id}` |
-| Products | `POST` | `{{host}}/api/api/v1/catalog/products` |
-| Products | `PATCH` | `{{host}}/api/api/v1/catalog/products/{id}` |
-| Products | `POST` | `{{host}}/api/api/v1/catalog/products/{id}/publish` |
-| Products | `POST` | `{{host}}/api/api/v1/catalog/products/{id}/pause` |
-| Products | `POST` | `{{host}}/api/api/v1/catalog/products/{id}/archive` |
-| Products | `POST` | `{{host}}/api/api/v1/catalog/products/{productId}/stock/adjustments` |
-| Products | `POST` | `{{host}}/api/api/v1/catalog/products/{productId}/stock/reservations` |
-| Products | `POST` | `{{host}}/api/api/v1/catalog/products/{productId}/images` |
-| Products | `DELETE` | `{{host}}/api/api/v1/catalog/products/{productId}/images/{imageId}` |
-| Products | `PATCH` | `{{host}}/api/api/v1/catalog/products/{productId}/images/{imageId}/primary` |
-| Products | `PUT` | `{{host}}/api/api/v1/catalog/products/{productId}/images/reorder` |
-| Uploads | `POST` | `{{host}}/api/api/v1/uploads` |
+| Coupons | `PUT` | `{{host}}/api/v1/coupons/{{couponId}}` |
+
+### 4.3. Rotas liberadas no SecurityConfig, mas sem controller neste worktree
+
+Essas URLs passam pela whitelist de segurança, mas não possuem endpoint implementado agora:
+
+| Grupo | Método esperado | URL final |
+|---|---|---|
+| Auth | `POST` | `{{host}}/api/v1/auth/password/forgot` |
+| Auth | `POST` | `{{host}}/api/v1/auth/social/{provider}` |
+| Auth | `POST` | `{{host}}/api/v1/auth/2fa/verify` |
+
+### 4.4. Rotas de profile não implementadas
+
+Não crie requests ativas para estas rotas neste worktree:
+
+| Grupo | Método | URL final | Resultado esperado hoje |
+|---|---|---|---|
+| Profile | `GET` | `{{host}}/api/v1/users/me/profile` | `404 Not Found` |
+| Profile | `PUT` | `{{host}}/api/v1/users/me/profile` | `404 Not Found` |
 
 ## 5. Payloads úteis para teste
 
-## 5.1. Auth
+### 5.1. Auth
 
-### Registrar usuário
+#### Registrar usuário
 
 `POST {{host}}/api/v1/auth/register`
 
@@ -174,7 +159,9 @@ if (json.setupTokenId) pm.environment.set("setupTokenId", json.setupTokenId);
 }
 ```
 
-### Login
+Resposta esperada: `201 Created`.
+
+#### Login
 
 `POST {{host}}/api/v1/auth/login`
 
@@ -185,7 +172,9 @@ if (json.setupTokenId) pm.environment.set("setupTokenId", json.setupTokenId);
 }
 ```
 
-### Refresh
+Resposta esperada: `200 OK`, com `accessToken` e `refreshToken`.
+
+#### Refresh
 
 `POST {{host}}/api/v1/auth/refresh`
 
@@ -195,7 +184,21 @@ if (json.setupTokenId) pm.environment.set("setupTokenId", json.setupTokenId);
 }
 ```
 
-### Logout
+Resposta esperada: `200 OK`, com novo par de tokens.
+
+#### Verificar e-mail
+
+`POST {{host}}/api/v1/auth/verify-email`
+
+```json
+{
+  "token": "TOKEN_DE_VERIFICACAO"
+}
+```
+
+Resposta esperada: `204 No Content`.
+
+#### Logout
 
 `POST {{host}}/api/v1/auth/logout`
 
@@ -205,32 +208,37 @@ if (json.setupTokenId) pm.environment.set("setupTokenId", json.setupTokenId);
 }
 ```
 
-### Social login
+Resposta esperada: `204 No Content`.
 
-`POST {{host}}/api/v1/auth/social/google`
+### 5.2. Users
 
-```json
-{
-  "token": "GOOGLE_ID_TOKEN"
-}
+#### Obter usuário atual
+
+`GET {{host}}/api/v1/users/me`
+
+Authorization: `Bearer {{token}}`
+
+Resposta esperada: `200 OK`.
+
+### 5.3. Profile
+
+#### Atualizar perfil
+
+Não disponível neste worktree.
+
+O código analisado em `UserController.java` não possui:
+
+```java
+@PutMapping("/me/profile")
 ```
 
-### Verificar 2FA
+Se você enviar a request abaixo, o resultado esperado hoje é `404 Not Found`:
 
-`POST {{host}}/api/v1/auth/2fa/verify`
-
-```json
-{
-  "transactionId": "{{transactionId}}",
-  "code": "123456"
-}
+```text
+PUT {{host}}/api/v1/users/me/profile
 ```
 
-## 5.2. Profile
-
-### Atualizar perfil
-
-`PUT {{host}}/api/v1/users/me/profile`
+Payload planejado em outros worktrees, mas não atendido por este controller:
 
 ```json
 {
@@ -245,245 +253,58 @@ if (json.setupTokenId) pm.environment.set("setupTokenId", json.setupTokenId);
 }
 ```
 
-## 5.3. Address
+### 5.4. Coupons
 
-### Criar endereço
+#### Atualizar cupom
 
-`POST {{host}}/api/v1/users/me/addresses`
+`PUT {{host}}/api/v1/coupons/{{couponId}}`
 
-```json
-{
-  "label": "Casa",
-  "recipient_name": "Joao Silva",
-  "street": "Rua Exemplo",
-  "number": "123",
-  "complement": "Apto 45",
-  "neighborhood": "Centro",
-  "city": "Sao Paulo",
-  "state": "SP",
-  "postal_code": "01001-000",
-  "country": "BR",
-  "is_billing_address": false
-}
-```
-
-### Atualizar endereço
-
-`PUT {{host}}/api/v1/users/me/addresses/{{addressId}}`
+Authorization: `Bearer {{token}}`
 
 ```json
 {
-  "label": "Trabalho",
-  "recipient_name": "Joao Silva",
-  "street": "Avenida Nova",
-  "number": "500",
-  "complement": null,
-  "neighborhood": "Bela Vista",
-  "city": "Sao Paulo",
-  "state": "SP",
-  "postal_code": "01310-100",
-  "country": "BR",
-  "is_billing_address": true
+  "description": "Cupom atualizado pelo Postman",
+  "discountValue": 15.00,
+  "minOrderValue": 100.00,
+  "maxDiscountAmount": 50.00,
+  "maxUses": 100,
+  "maxUsesPerUser": 1,
+  "startsAt": "2026-04-18T00:00:00Z",
+  "expiresAt": "2026-12-31T23:59:59Z",
+  "eligibleCategoryIds": [],
+  "eligibleProductIds": [],
+  "eligibleBrandIds": [],
+  "eligibleUserIds": []
 }
 ```
 
-## 5.4. 2FA
+Campos imutáveis pelo endpoint:
 
-### Iniciar setup
-
-`POST {{host}}/api/v1/users/me/2fa/setup`
-
-Sem body.
-
-### Confirmar setup
-
-`POST {{host}}/api/v1/users/me/2fa/enable`
-
-```json
-{
-  "setup_token_id": "{{setupTokenId}}",
-  "code": "123456"
-}
-```
-
-## 5.5. Categories
-
-### Criar categoria
-
-`POST {{host}}/api/api/v1/catalog/categories`
-
-```json
-{
-  "parentId": null,
-  "name": "Eletronicos",
-  "slug": "eletronicos",
-  "description": "Categoria principal",
-  "imageUrl": null,
-  "sortOrder": 1
-}
-```
-
-## 5.6. Brands
-
-### Criar marca
-
-`POST {{host}}/api/api/v1/catalog/brands`
-
-```json
-{
-  "name": "Acme",
-  "slug": "acme",
-  "description": "Marca de teste",
-  "logoUrl": null
-}
-```
-
-## 5.7. Products
-
-### Buscar produtos
-
-`GET {{host}}/api/api/v1/catalog/products?q=phone&page=0&size=20`
-
-### Criar produto
-
-`POST {{host}}/api/api/v1/catalog/products`
-
-```json
-{
-  "categoryId": "{{categoryId}}",
-  "brandId": "{{brandId}}",
-  "name": "Smartphone X",
-  "slug": "smartphone-x",
-  "description": "Produto de teste",
-  "shortDescription": "Resumo",
-  "sku": "SKU-001",
-  "price": 1999.90,
-  "compareAtPrice": 2299.90,
-  "costPrice": 1500.00,
-  "lowStockThreshold": 5,
-  "weight": 0.4,
-  "width": 8.0,
-  "height": 16.0,
-  "depth": 0.8,
-  "images": []
-}
-```
-
-### Atualizar produto
-
-`PATCH {{host}}/api/api/v1/catalog/products/{{productId}}`
-
-```json
-{
-  "categoryId": "{{categoryId}}",
-  "brandId": "{{brandId}}",
-  "name": "Smartphone X Pro",
-  "slug": "smartphone-x-pro",
-  "description": "Descricao atualizada",
-  "shortDescription": "Resumo atualizado",
-  "sku": "SKU-001",
-  "price": 2099.90,
-  "compareAtPrice": 2399.90,
-  "costPrice": 1600.00,
-  "lowStockThreshold": 4,
-  "weight": 0.42,
-  "width": 8.1,
-  "height": 16.1,
-  "depth": 0.8,
-  "featured": true
-}
-```
-
-### Ajuste de estoque
-
-`POST {{host}}/api/api/v1/catalog/products/{{productId}}/stock/adjustments`
-
-```json
-{
-  "delta": 10,
-  "movementType": "MANUAL_IN",
-  "notes": "Carga inicial",
-  "referenceId": null,
-  "referenceType": null
-}
-```
-
-### Reserva de estoque
-
-`POST {{host}}/api/api/v1/catalog/products/{{productId}}/stock/reservations`
-
-```json
-{
-  "quantity": 2,
-  "orderId": null,
-  "ttlMinutes": 15
-}
-```
-
-### Adicionar imagem ao produto
-
-`POST {{host}}/api/api/v1/catalog/products/{{productId}}/images`
-
-```json
-{
-  "url": "https://cdn.exemplo.com/produto.jpg",
-  "altText": "Imagem frontal",
-  "sortOrder": 1,
-  "primary": true
-}
-```
-
-### Reordenar imagens
-
-`PUT {{host}}/api/api/v1/catalog/products/{{productId}}/images/reorder`
-
-```json
-{
-  "imageIds": ["{{imageId}}"]
-}
-```
-
-## 5.8. Upload
-
-### Upload de imagem
-
-`POST {{host}}/api/api/v1/uploads`
-
-- Body: `form-data`
-- Campo: `file`
-- Tipos aceitos no código atual: `jpeg`, `png`, `webp`, `gif`, `svg`
-
-Observação:
-
-- `svg` ainda é aceito no código atual, mas isso é um risco de segurança e não deveria ser usado em produção.
+- `code`
+- `coupon_type`
+- `coupon_scope`
+- `status`
 
 ## 6. Ordem sugerida de teste manual
 
-1. Registrar usuário
-2. Login
-3. `GET /api/v1/users/me`
-4. Setup 2FA
-5. Enable 2FA
-6. Login novamente para capturar `transactionId`
-7. Verificar 2FA
-8. Criar endereço
-9. Criar categoria
-10. Criar marca
-11. Criar produto
-12. Ajustar estoque
-13. Publicar produto
-14. Buscar produto
-15. Fazer upload
-16. Adicionar imagem ao produto
+1. Registrar usuário.
+2. Fazer login e capturar `token` e `refreshToken`.
+3. Chamar `GET {{host}}/api/v1/users/me` com Bearer token.
+4. Chamar `POST {{host}}/api/v1/auth/refresh`.
+5. Se houver cupom existente no banco, preencher `couponId` e chamar `PUT {{host}}/api/v1/coupons/{{couponId}}`.
+6. Chamar `POST {{host}}/api/v1/auth/logout`.
 
 ## 7. Resumo da análise
 
-O projeto hoje expõe 35 endpoints de negócio em `modules/api`.
+O projeto neste worktree expõe 7 endpoints de negócio em `modules/api`:
+
+- 5 endpoints de auth
+- 1 endpoint de usuário atual
+- 1 endpoint de atualização de cupom
 
 Principais desvios encontrados:
 
-- catálogo e upload estão com path final duplicado em `/api/api/...`
-- alguns endpoints descritos como públicos no controller estão protegidos na prática pelo `SecurityConfig`
-- `docs/postman.md` antigo não refletia o estado real do código
-
-Antes de compartilhar a collection com time ou QA, vale corrigir a inconsistência de paths no código para evitar documentação “especial” só para o ambiente atual.
+- `UpdateProfile` não está exposto no `UserController.java`.
+- Os beans de profile em `UseCaseConfig.java` estão comentados.
+- O `SecurityConfig` libera algumas rotas que não possuem controller neste worktree.
+- O `docs/postman.md` anterior descrevia endpoints de outros worktrees ou versões da API e poderia induzir testes em URLs inexistentes.

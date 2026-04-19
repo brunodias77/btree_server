@@ -3,6 +3,11 @@ package com.btree.api.config;
 import com.btree.application.usecase.job.clean_expired_tokens.CleanupExpiredTokensJob;
 import com.btree.application.usecase.job.process_domain_event.ProcessDomainEventsJob;
 import com.btree.application.usecase.job.retry_failed_event.RetryFailedEventsJob;
+import com.btree.application.usecase.user.address.add_address.AddAddressUseCase;
+import com.btree.application.usecase.user.address.delete_address.DeleteAddressUseCase;
+import com.btree.application.usecase.user.address.list_address.ListAddressUseCase;
+import com.btree.application.usecase.user.address.set_default_address.SetDefaultAddressUseCase;
+import com.btree.application.usecase.user.address.update_address.UpdateAddressUseCase;
 import com.btree.application.usecase.user.auth.confirm_password_reset.ConfirmPasswordResetUseCase;
 import com.btree.application.usecase.user.auth.enable_two_factor.EnableTwoFactorUseCase;
 import com.btree.application.usecase.user.auth.forgot_password.ForgotPasswordUseCase;
@@ -15,6 +20,8 @@ import com.btree.application.usecase.user.auth.setup_two_factor.SetupTwoFactorUs
 import com.btree.application.usecase.user.auth.verify_email.VerifyEmailUseCase;
 import com.btree.application.usecase.user.auth.verify_two_factor.VerifyTwoFactorUseCase;
 import com.btree.application.usecase.user.get_current_user.GetCurrentUserUseCase;
+import com.btree.application.usecase.user.get_profile.GetProfileUseCase;
+import com.btree.application.usecase.user.update_profile.UpdateProfileUseCase;
 import com.btree.domain.user.gateway.*;
 import com.btree.infrastructure.config.JwtConfig;
 import com.btree.shared.contract.*;
@@ -130,19 +137,12 @@ public class UseCaseConfig {
         return new LogoutUserUseCase(sessionGateway, tokenHasher, transactionManager);
     }
 
-//    @Bean
-//    public LogoutAllSessionsUseCase logoutAllSessionsUseCase(
-//            final SessionGateway sessionGateway,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new LogoutAllSessionsUseCase(sessionGateway, transactionManager);
-//    }
-//
+
     @Bean
     public GetCurrentUserUseCase getCurrentUserUseCase(final UserGateway userGateway) {
         return new GetCurrentUserUseCase(userGateway);
     }
-//
+
     @Bean
     public ForgotPasswordUseCase forgotPasswordUseCase(
             final UserGateway userGateway,
@@ -173,7 +173,7 @@ public class UseCaseConfig {
         );
     }
 
-//
+
     @Bean
     public LoginSocialProviderUseCase loginWithSocialProviderUseCase(
             final UserGateway userGateway,
@@ -248,6 +248,79 @@ public class UseCaseConfig {
                 jwtConfig.getRefreshTokenExpirationMs()
         );
     }
+
+    @Bean
+    public UpdateProfileUseCase updateProfileUseCase(
+            final ProfileGateway profileGateway,
+            final TransactionManager transactionManager
+    ) {
+        return new UpdateProfileUseCase(profileGateway, transactionManager);
+    }
+
+    @Bean
+    public GetProfileUseCase getProfileUseCase(final ProfileGateway profileGateway) {
+        return new GetProfileUseCase(profileGateway);
+    }
+
+    @Bean
+    public AddAddressUseCase addAddressUseCase(
+            final AddressGateway addressGateway,
+            final TransactionManager transactionManager
+    ) {
+        return new AddAddressUseCase(addressGateway, transactionManager);
+    }
+
+    @Bean
+    public ListAddressUseCase listAddressUseCase(final AddressGateway addressGateway) {
+        return new ListAddressUseCase(addressGateway);
+    }
+
+    @Bean
+    public UpdateAddressUseCase updateAddressUseCase(
+            final AddressGateway addressGateway,
+            final TransactionManager transactionManager
+    ) {
+        return new UpdateAddressUseCase(addressGateway, transactionManager);
+    }
+
+    @Bean
+    public DeleteAddressUseCase deleteAddressUseCase(
+            final AddressGateway addressGateway,
+            final TransactionManager transactionManager
+    ) {
+        return new DeleteAddressUseCase(addressGateway, transactionManager);
+    }
+
+    @Bean
+    public SetDefaultAddressUseCase setDefaultAddressUseCase(
+            final AddressGateway addressGateway,
+            final TransactionManager transactionManager
+    ) {
+        return new SetDefaultAddressUseCase(addressGateway, transactionManager);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//    @Bean
+//    public LogoutAllSessionsUseCase logoutAllSessionsUseCase(
+//            final SessionGateway sessionGateway,
+//            final TransactionManager transactionManager
+//    ) {
+//        return new LogoutAllSessionsUseCase(sessionGateway, transactionManager);
+//    }
+//
+
 //
 //    @Bean
 //    public CleanupExpiredTokensUseCase cleanupExpiredTokensUseCase(
@@ -257,50 +330,7 @@ public class UseCaseConfig {
 //        return new CleanupExpiredTokensUseCase(userTokenGateway, transactionManager);
 //    }
 //
-//    @Bean
-//    public GetProfileUseCase getProfileUseCase(final ProfileGateway profileGateway) {
-//        return new GetProfileUseCase(profileGateway);
-//    }
-//
-//    @Bean
-//    public UpdateProfileUseCase updateProfileUseCase(
-//            final ProfileGateway profileGateway,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new UpdateProfileUseCase(profileGateway, transactionManager);
-//    }
-//
-//    @Bean
-//    public AddAddressUseCase addAddressUseCase(
-//            final AddressGateway addressGateway,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new AddAddressUseCase(addressGateway, transactionManager);
-//    }
-//
-//    @Bean
-//    public UpdateAddressUseCase updateAddressUseCase(
-//            final AddressGateway addressGateway,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new UpdateAddressUseCase(addressGateway, transactionManager);
-//    }
-//
-//    @Bean
-//    public DeleteAddressUseCase deleteAddressUseCase(
-//            final AddressGateway addressGateway,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new DeleteAddressUseCase(addressGateway, transactionManager);
-//    }
-//
-//    @Bean
-//    public SetDefaultAddressUseCase setDefaultAddressUseCase(
-//            final AddressGateway addressGateway,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new SetDefaultAddressUseCase(addressGateway, transactionManager);
-//    }
+
 //
 //    @Bean
 //    public ListAddressesUseCase listAddressesUseCase(final AddressGateway addressGateway) {
