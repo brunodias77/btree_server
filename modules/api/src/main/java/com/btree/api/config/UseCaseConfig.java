@@ -6,6 +6,7 @@ import com.btree.application.usecase.job.retry_failed_event.RetryFailedEventsJob
 import com.btree.application.usecase.user.address.add_address.AddAddressUseCase;
 import com.btree.application.usecase.user.address.delete_address.DeleteAddressUseCase;
 import com.btree.application.usecase.user.address.list_address.ListAddressUseCase;
+import com.btree.application.usecase.user.address.set_default_address.SetDefaultAddressUseCase;
 import com.btree.application.usecase.user.address.update_address.UpdateAddressUseCase;
 import com.btree.application.usecase.user.auth.confirm_password_reset.ConfirmPasswordResetUseCase;
 import com.btree.application.usecase.user.auth.enable_two_factor.EnableTwoFactorUseCase;
@@ -290,6 +291,27 @@ public class UseCaseConfig {
         return new DeleteAddressUseCase(addressGateway, transactionManager);
     }
 
+    @Bean
+    public SetDefaultAddressUseCase setDefaultAddressUseCase(
+            final AddressGateway addressGateway,
+            final TransactionManager transactionManager
+    ) {
+        return new SetDefaultAddressUseCase(addressGateway, transactionManager);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //    @Bean
 //    public LogoutAllSessionsUseCase logoutAllSessionsUseCase(
 //            final SessionGateway sessionGateway,
@@ -308,13 +330,7 @@ public class UseCaseConfig {
 //        return new CleanupExpiredTokensUseCase(userTokenGateway, transactionManager);
 //    }
 //
-//    @Bean
-//    public SetDefaultAddressUseCase setDefaultAddressUseCase(
-//            final AddressGateway addressGateway,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new SetDefaultAddressUseCase(addressGateway, transactionManager);
-//    }
+
 //
 //    @Bean
 //    public ListAddressesUseCase listAddressesUseCase(final AddressGateway addressGateway) {

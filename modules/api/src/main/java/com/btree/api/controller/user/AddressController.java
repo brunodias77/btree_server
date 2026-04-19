@@ -4,6 +4,7 @@ import com.btree.api.dto.request.user.AddAddressRequest;
 import com.btree.api.dto.request.user.UpdateAddressRequest;
 import com.btree.api.dto.response.user.AddAddressResponse;
 import com.btree.api.dto.response.user.ListAddressResponse;
+import com.btree.api.dto.response.user.SetDefaultAddressResponse;
 import com.btree.api.dto.response.user.UpdateAddressResponse;
 import com.btree.application.usecase.user.address.add_address.AddAddressCommand;
 import com.btree.application.usecase.user.address.add_address.AddAddressUseCase;
@@ -11,6 +12,8 @@ import com.btree.application.usecase.user.address.delete_address.DeleteAddressCo
 import com.btree.application.usecase.user.address.delete_address.DeleteAddressUseCase;
 import com.btree.application.usecase.user.address.list_address.ListAddressCommand;
 import com.btree.application.usecase.user.address.list_address.ListAddressUseCase;
+import com.btree.application.usecase.user.address.set_default_address.SetDefaultAddressCommand;
+import com.btree.application.usecase.user.address.set_default_address.SetDefaultAddressUseCase;
 import com.btree.application.usecase.user.address.update_address.UpdateAddressCommand;
 import com.btree.application.usecase.user.address.update_address.UpdateAddressUseCase;
 import com.btree.shared.domain.DomainException;
@@ -35,12 +38,14 @@ public class AddressController {
     private final ListAddressUseCase listAddressUseCase;
     private final UpdateAddressUseCase updateAddressUseCase;
     private final DeleteAddressUseCase deleteAddressUseCase;
+    private final SetDefaultAddressUseCase setDefaultAddressUseCase;
 
-    public AddressController(AddAddressUseCase addAddressUseCase, ListAddressUseCase listAddressUseCase, UpdateAddressUseCase updateAddressUseCase, DeleteAddressUseCase deleteAddressUseCase) {
+    public AddressController(AddAddressUseCase addAddressUseCase, ListAddressUseCase listAddressUseCase, UpdateAddressUseCase updateAddressUseCase, DeleteAddressUseCase deleteAddressUseCase, SetDefaultAddressUseCase setDefaultAddressUseCase) {
         this.addAddressUseCase = addAddressUseCase;
         this.listAddressUseCase = listAddressUseCase;
         this.updateAddressUseCase = updateAddressUseCase;
         this.deleteAddressUseCase = deleteAddressUseCase;
+        this.setDefaultAddressUseCase = setDefaultAddressUseCase;
     }
 
     @PostMapping
@@ -165,6 +170,32 @@ public class AddressController {
                 .execute(new DeleteAddressCommand(userId, id))
                 .getOrElseThrow(n -> DomainException.with(n.getErrors()));
     }
+
+    // ── UC-20: SetDefaultAddress ──────────────────────────────────────────
+
+    @PatchMapping("/{id}/default")
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(
+            summary = "Definir endereço padrão",
+            description = "Marca um endereço como padrão de entrega, removendo a marcação " +
+                    "do endereço padrão anterior em operação atômica. " +
+                    "Se o endereço já for o padrão, a operação é idempotente — retorna 200 sem modificações."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Endereço definido como padrão com sucesso"),
+            @ApiResponse(responseCode = "401", description = "Token ausente ou inválido"),
+            @ApiResponse(responseCode = "422", description = "Endereço não encontrado, deletado ou não pertence ao usuário")
+    })
+    public SetDefaultAddressResponse setDefault(@PathVariable final String id) {
+        final String userId = currentUserId();
+
+        return SetDefaultAddressResponse.from(
+                setDefaultAddressUseCase
+                        .execute(new SetDefaultAddressCommand(userId, id))
+                        .getOrElseThrow(n -> DomainException.with(n.getErrors()))
+        );
+    }
+
 
     private String currentUserId() {
         final Authentication auth = SecurityContextHolder.getContext().getAuthentication();
