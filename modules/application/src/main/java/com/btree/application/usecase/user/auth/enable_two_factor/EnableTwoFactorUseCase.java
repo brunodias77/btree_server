@@ -13,8 +13,6 @@ import com.btree.shared.event.DomainEventPublisher;
 import com.btree.shared.usecase.UseCase;
 import com.btree.shared.validation.Notification;
 import io.vavr.control.Either;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
 
@@ -23,8 +21,6 @@ import static io.vavr.API.Try;
 
 
 public class EnableTwoFactorUseCase implements UseCase<EnableTwoFactorCommand, Void> {
-
-    private static final Logger log = LoggerFactory.getLogger(EnableTwoFactorUseCase.class);
 
     private final UserGateway userGateway;
     private final UserTokenGateway userTokenGateway;
@@ -95,9 +91,6 @@ public class EnableTwoFactorUseCase implements UseCase<EnableTwoFactorCommand, V
         final var user = userOpt.get();
 
         final String secret = stringEncryptor.decrypt(token.getTokenHash());
-
-        log.debug("[EnableTwoFactor] decrypted secret length={}, secret={}", secret.length(), secret);
-        log.debug("[EnableTwoFactor] provided code={}", enableTwoFactorCommand.code());
 
         if (!this.totpGateway.isValidCode(secret, enableTwoFactorCommand.code())) {
             notification.append(UserError.INVALID_TOTP_CODE);
