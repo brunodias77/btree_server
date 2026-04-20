@@ -3,6 +3,11 @@ package com.btree.api.config;
 import com.btree.application.usecase.catalog.brand.create.CreateBrandUseCase;
 import com.btree.application.usecase.catalog.brand.list_all.ListAllBrandUseCase;
 import com.btree.application.usecase.catalog.brand.update.UpdateBrandUseCase;
+import com.btree.application.usecase.catalog.category.create.CreateCategoryUseCase;
+import com.btree.application.usecase.catalog.category.list_all_categories.ListAllCategoriesUseCase;
+import com.btree.application.usecase.media.upload.UploadFileUseCase;
+import com.btree.domain.catalog.gateway.CategoryGateway;
+import com.btree.shared.contract.FileStorageService;
 import com.btree.application.usecase.job.clean_expired_tokens.CleanupExpiredTokensJob;
 import com.btree.application.usecase.job.process_domain_event.ProcessDomainEventsJob;
 import com.btree.application.usecase.job.retry_failed_event.RetryFailedEventsJob;
@@ -318,6 +323,13 @@ public class UseCaseConfig {
         return new ListAllBrandUseCase(brandGateway);
     }
 
+    // ── Media ─────────────────────────────────────────────────────────────────
+
+    @Bean
+    public UploadFileUseCase uploadFileUseCase(final FileStorageService fileStorageService) {
+        return new UploadFileUseCase(fileStorageService);
+    }
+
     @Bean
     public UpdateBrandUseCase updateBrandUseCase(
             final BrandGateway brandGateway,
@@ -325,6 +337,34 @@ public class UseCaseConfig {
     ) {
         return new UpdateBrandUseCase(brandGateway, transactionManager);
     }
+
+
+
+    @Bean
+    public ListAllCategoriesUseCase listAllCategoriesUseCase(
+            final CategoryGateway categoryGateway
+            ){
+        return new ListAllCategoriesUseCase(categoryGateway);
+    }
+
+    @Bean
+    public CreateCategoryUseCase createCategoryUseCase(
+            final CategoryGateway categoryGateway,
+            final DomainEventPublisher eventPublisher,
+            final TransactionManager transactionManager
+    ) {
+        return new CreateCategoryUseCase(categoryGateway, eventPublisher, transactionManager);
+    }
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -365,14 +405,7 @@ public class UseCaseConfig {
 //
 
 //
-//    @Bean
-//    public CreateCategoryUseCase createCategoryUseCase(
-//            final CategoryGateway categoryGateway,
-//            final DomainEventPublisher eventPublisher,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new CreateCategoryUseCase(categoryGateway, eventPublisher, transactionManager);
-//    }
+
 //
 //    @Bean
 //    public UpdateCategoryUseCase updateCategoryUseCase(

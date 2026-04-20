@@ -50,7 +50,7 @@ public abstract class UseCaseTest {
                 : null;
     }
 
-    protected static final class ImmediateTransactionManager implements TransactionManager {
+    public static final class ImmediateTransactionManager implements TransactionManager {
         @Override
         public <T> T execute(final Supplier<T> action) {
             return action.get();

@@ -15,6 +15,7 @@ Crie um Environment no Postman chamado **btree-local** com as seguintes variáve
 | `transaction_id` | _(vazio)_ | Preenchido automaticamente quando login detecta 2FA ativo |
 | `setup_token_id` | _(vazio)_ | Preenchido automaticamente durante configuração de 2FA |
 | `address_id` | _(vazio)_ | Preenchido após cadastrar ou listar endereços |
+| `brand_id` | _(vazio)_ | Preenchido após criar ou listar marcas |
 
 ### Authorization Global
 
@@ -1150,6 +1151,282 @@ pm.environment.unset("address_id");
 
 ---
 
+---
+
+## Contexto: Catalog — Brands
+
+**Base path:** `/v1/catalog/brands`  
+**Segurança:** Todos os endpoints requerem **JWT válido** no header `Authorization: Bearer {{access_token}}`.
+
+---
+
+### 1. Criar Marca
+
+**`POST /v1/catalog/brands`**
+
+Cadastra uma nova marca no catálogo. O slug deve ser único entre marcas ativas.
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/catalog/brands
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Nike",
+  "slug": "nike",
+  "description": "Marca esportiva americana",
+  "logo_url": "https://cdn.example.com/nike.png"
+}
+```
+
+**Validações:**
+
+| Campo | Obrigatório | Restrições |
+|---|---|---|
+| `name` | **Sim** | Máximo 200 caracteres |
+| `slug` | **Sim** | Máximo 256 caracteres; apenas letras minúsculas, números e hífens (`^[a-z0-9]+(?:-[a-z0-9]+)*$`) |
+| `description` | Não | Texto livre |
+| `logo_url` | Não | Máximo 512 caracteres |
+
+**Response `201 Created`:**
+
+```json
+{
+  "id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "name": "Nike",
+  "slug": "nike",
+  "description": "Marca esportiva americana",
+  "logo_url": "https://cdn.example.com/nike.png",
+  "created_at": "2026-04-19T10:00:00Z",
+  "updated_at": "2026-04-19T10:00:00Z"
+}
+```
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Campo obrigatório ausente ou formato de slug inválido |
+| `401` | Token ausente ou inválido |
+| `422` | Slug já em uso por outra marca ativa |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 201", () => pm.response.to.have.status(201));
+const body = pm.response.json();
+pm.test("id presente", () => {
+  pm.expect(body.id).to.be.a("string").and.not.be.empty;
+  pm.environment.set("brand_id", body.id);
+});
+pm.test("slug confere", () => pm.expect(body.slug).to.equal("nike"));
+pm.test("created_at presente", () => pm.expect(body.created_at).to.be.a("string"));
+```
+
+---
+
+### 2. Listar Marcas
+
+**`GET /v1/catalog/brands`**
+
+Retorna todas as marcas ativas (não soft-deletadas) do catálogo, sem paginação.
+
+**Request:**
+
+```http
+GET {{base_url}}/v1/catalog/brands
+Authorization: Bearer {{access_token}}
+```
+
+**Response `200 OK`:**
+
+```json
+[
+  {
+    "id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+    "name": "Nike",
+    "slug": "nike",
+    "description": "Marca esportiva americana",
+    "logo_url": "https://cdn.example.com/nike.png",
+    "created_at": "2026-04-19T10:00:00Z",
+    "updated_at": "2026-04-19T10:00:00Z"
+  },
+  {
+    "id": "019600a1-cccc-7d4e-a5f6-aabbccddeeff",
+    "name": "Adidas",
+    "slug": "adidas",
+    "description": null,
+    "logo_url": null,
+    "created_at": "2026-04-19T11:00:00Z",
+    "updated_at": "2026-04-19T11:00:00Z"
+  }
+]
+```
+
+> Campos `null` são omitidos do JSON (`@JsonInclude(NON_NULL)`). Array vazio `[]` quando não houver marcas cadastradas.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `401` | Token ausente ou inválido |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("Resposta é array", () => pm.expect(body).to.be.an("array"));
+if (body.length > 0) {
+  pm.environment.set("brand_id", body[0].id);
+  pm.test("Primeiro item tem id e slug", () => {
+    pm.expect(body[0].id).to.be.a("string");
+    pm.expect(body[0].slug).to.be.a("string");
+  });
+}
+```
+
+---
+
+### 3. Editar Marca
+
+**`PUT /v1/catalog/brands/{id}`**
+
+Atualiza todos os campos mutáveis de uma marca existente (PUT semântico — substituição completa). Não é possível editar marcas soft-deletadas.
+
+**Request:**
+
+```http
+PUT {{base_url}}/v1/catalog/brands/{{brand_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Nike Updated",
+  "slug": "nike",
+  "description": "Descrição atualizada",
+  "logo_url": "https://cdn.example.com/nike-v2.png"
+}
+```
+
+**Validações:**
+
+| Campo | Obrigatório | Restrições |
+|---|---|---|
+| `name` | **Sim** | Máximo 200 caracteres |
+| `slug` | **Sim** | Máximo 256 caracteres; kebab-case (`^[a-z0-9]+(?:-[a-z0-9]+)*$`) |
+| `description` | Não | Texto livre |
+| `logo_url` | Não | Máximo 512 caracteres |
+
+**Response `200 OK`:**
+
+```json
+{
+  "id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "name": "Nike Updated",
+  "slug": "nike",
+  "description": "Descrição atualizada",
+  "logo_url": "https://cdn.example.com/nike-v2.png",
+  "created_at": "2026-04-19T10:00:00Z",
+  "updated_at": "2026-04-19T12:00:00Z"
+}
+```
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Campo obrigatório ausente ou slug inválido |
+| `401` | Token ausente ou inválido |
+| `422` | Marca não encontrada, já deletada, ou novo slug em uso por outra marca ativa |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("id confere", () => pm.expect(body.id).to.equal(pm.environment.get("brand_id")));
+pm.test("updated_at presente", () => pm.expect(body.updated_at).to.be.a("string"));
+pm.test("name atualizado", () => pm.expect(body.name).to.equal("Nike Updated"));
+```
+
+---
+
+## Contexto: Media
+
+**Base path:** `/v1/media`  
+**Segurança:** Todos os endpoints requerem **JWT válido** no header `Authorization: Bearer {{access_token}}`.
+
+---
+
+### 1. Upload de Imagem
+
+**`POST /v1/media/upload`**
+
+Armazena uma imagem no object storage (MinIO/S3) e retorna a URL pública de acesso direto.
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/media/upload
+Authorization: Bearer {{access_token}}
+Content-Type: multipart/form-data
+```
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `file` | `File` | Imagem a ser enviada. Tamanho máximo: **10 MB**. |
+
+> No Postman: aba **Body → form-data → Key = `file`, Type = `File`**, selecionar o arquivo.
+
+**Formatos aceitos:**
+
+| MIME Type | Extensão |
+|---|---|
+| `image/jpeg` | `.jpg` / `.jpeg` |
+| `image/png` | `.png` |
+| `image/webp` | `.webp` |
+| `image/gif` | `.gif` |
+| `image/svg+xml` | `.svg` |
+
+**Response `200 OK`:**
+
+```json
+{
+  "url": "http://localhost:9000/btree-uploads/a3f7c1d9-e8b2-4f50-9c6d-0123456789ab.jpg"
+}
+```
+
+> A URL retornada é pública e pode ser referenciada diretamente em `logo_url` de marcas, `avatar_url` de perfis ou qualquer outro campo de imagem do domínio.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Arquivo vazio ou tipo MIME não suportado |
+| `401` | Token ausente ou inválido |
+| `422` | Falha no armazenamento (MinIO indisponível, disco cheio, etc.) |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("url presente e começa com http", () => {
+  pm.expect(body.url).to.be.a("string").and.not.be.empty;
+  pm.expect(body.url).to.match(/^https?:\/\//);
+  pm.environment.set("uploaded_url", body.url);
+});
+```
+
+---
+
 ## Fluxos de Teste Recomendados
 
 ### Fluxo 1: Registro e Primeiro Acesso
@@ -1235,6 +1512,33 @@ Execute as requests na seguinte ordem:
 10. **Remover o Endereço padrão** (único ativo) → deve retornar `204 No Content` (permitido quando é o único)
 11. **Listar Endereços** → array vazio
 
+### Fluxo 10: CRUD de Marcas
+
+> Pré-requisito: sessão ativa (`access_token` no environment).
+
+1. **Listar Marcas** `GET /v1/catalog/brands` → array vazio ou existente
+2. **Criar Marca** `POST /v1/catalog/brands` com `name`, `slug`, `description`, `logo_url`
+   - Deve retornar `201 Created`
+   - Script salva `brand_id` no environment
+3. **Listar Marcas** `GET /v1/catalog/brands` → confirmar novo item na lista
+4. **Editar Marca** `PUT /v1/catalog/brands/{{brand_id}}` com dados alterados → `200 OK`, `updated_at` diferente de `created_at`
+5. Testar slug duplicado → `POST` com mesmo `slug` de marca existente → deve retornar `422`
+6. Testar slug inválido → `PUT` com `slug: "Minha Marca"` (maiúsculo com espaço) → deve retornar `400`
+7. Testar `PUT` em UUID inexistente → deve retornar `422`
+
+### Fluxo 11: Upload de Imagem e Atualização de Logo
+
+> Pré-requisito: sessão ativa e marca criada (`brand_id` no environment).
+
+1. **Upload de Imagem** `POST /v1/media/upload` com um arquivo `.jpg` ou `.png`
+   - Deve retornar `200 OK` com `url` pública
+   - Script salva `uploaded_url` no environment
+2. **Editar Marca** `PUT /v1/catalog/brands/{{brand_id}}` enviando a URL retornada no campo `logo_url`
+   - Confirmar que `logo_url` foi atualizado no response
+3. **Listar Marcas** `GET /v1/catalog/brands` → confirmar `logo_url` preenchido na marca
+4. Testar upload com arquivo `.pdf` → deve retornar `400` (tipo não suportado)
+5. Testar upload sem arquivo (campo `file` vazio) → deve retornar `400`
+
 ### Fluxo 9: Login com 2FA Ativo
 
 > Pré-requisito: conta com 2FA ativado (Fluxo 6 concluído).
@@ -1254,7 +1558,52 @@ Execute as requests na seguinte ordem:
 
 ---
 
-## Endpoints Disponíveis (Health e Docs)
+## Endpoints Disponíveis
+
+### Auth
+
+| Endpoint | Método | Auth | Descrição |
+|---|---|---|---|
+| `/v1/auth/register` | `POST` | Público | Registrar usuário |
+| `/v1/auth/login` | `POST` | Público | Login (retorna tokens ou `transactionId` para 2FA) |
+| `/v1/auth/social/{provider}` | `POST` | Público | Login via OAuth2 (Google) |
+| `/v1/auth/verify-email` | `POST` | Público | Confirmar e-mail |
+| `/v1/auth/refresh` | `POST` | Público | Renovar tokens (token rotation) |
+| `/v1/auth/logout` | `POST` | Público | Encerrar sessão |
+| `/v1/auth/password/forgot` | `POST` | Público | Solicitar redefinição de senha |
+| `/v1/auth/password/reset` | `POST` | Público | Confirmar redefinição de senha |
+| `/v1/auth/2fa/setup` | `POST` | Bearer | Iniciar configuração de 2FA |
+| `/v1/auth/2fa/enable` | `POST` | Bearer | Ativar 2FA com código TOTP |
+| `/v1/auth/2fa/verify` | `POST` | Público | Segunda etapa do login com 2FA |
+
+### Users
+
+| Endpoint | Método | Auth | Descrição |
+|---|---|---|---|
+| `/v1/users/me` | `GET` | Bearer | Obter usuário atual (dados do JWT) |
+| `/v1/users` | `GET` | Bearer | Obter perfil completo |
+| `/v1/users/me/profile` | `PUT` | Bearer | Atualizar perfil |
+| `/v1/users/me/addresses` | `POST` | Bearer | Cadastrar endereço |
+| `/v1/users/me/addresses` | `GET` | Bearer | Listar endereços |
+| `/v1/users/me/addresses/{id}` | `PUT` | Bearer | Editar endereço |
+| `/v1/users/me/addresses/{id}` | `DELETE` | Bearer | Remover endereço (soft delete) |
+| `/v1/users/me/addresses/{id}/default` | `PATCH` | Bearer | Definir endereço padrão |
+
+### Catalog
+
+| Endpoint | Método | Auth | Descrição |
+|---|---|---|---|
+| `/v1/catalog/brands` | `POST` | Bearer | Criar marca |
+| `/v1/catalog/brands` | `GET` | Bearer | Listar marcas ativas |
+| `/v1/catalog/brands/{id}` | `PUT` | Bearer | Editar marca (PUT semântico) |
+
+### Media
+
+| Endpoint | Método | Auth | Descrição |
+|---|---|---|---|
+| `/v1/media/upload` | `POST` | Bearer | Upload de imagem (JPEG, PNG, WebP, GIF, SVG — máx 10 MB) |
+
+### Sistema
 
 | Endpoint | Método | Descrição |
 |---|---|---|
