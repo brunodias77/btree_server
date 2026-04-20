@@ -11,6 +11,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.ColumnTransformer;
 
 import java.io.Serializable;
 import java.time.Instant;
@@ -43,6 +44,7 @@ public class StockMovementJpaEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "movement_type", nullable = false, columnDefinition = "shared.stock_movement_type")
+    @ColumnTransformer(write = "?::shared.stock_movement_type")
     private StockMovementType movementType;
 
     @Column(name = "quantity", nullable = false)

@@ -18,6 +18,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import org.hibernate.annotations.ColumnTransformer;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -87,6 +88,7 @@ public class ProductJpaEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, columnDefinition = "shared.product_status")
+    @ColumnTransformer(write = "?::shared.product_status")
     private ProductStatus status;
 
     @Column(name = "featured", nullable = false)

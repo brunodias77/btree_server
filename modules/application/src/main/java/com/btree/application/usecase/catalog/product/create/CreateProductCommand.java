@@ -37,10 +37,10 @@ public record CreateProductCommand(
         /** Profundidade em cm (nullable). */
         BigDecimal depth,
 
-        /** Lista de imagens iniciais (nullable ou vazia). */
+        /** Lista de imagens iniciais (nullable ou vazia). Ordem no array determina sortOrder e primary. */
         List<ImageEntry> images
 
 ) {
-    /** Representação imutável de uma imagem a ser anexada ao produto. */
-    public record ImageEntry(String url, String altText, int sortOrder, boolean primary) {}
+    /** URL + texto alternativo. sortOrder e primary são calculados pelo UseCase pela posição na lista. */
+    public record ImageEntry(String url, String altText) {}
 }

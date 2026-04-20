@@ -8,6 +8,7 @@ import com.btree.domain.catalog.identifier.BrandId;
 import com.btree.domain.catalog.identifier.CategoryId;
 import com.btree.domain.catalog.value_object.ProductDimensions;
 import com.btree.shared.contract.TransactionManager;
+import com.btree.shared.domain.DomainException;
 import com.btree.shared.event.DomainEventPublisher;
 import com.btree.shared.usecase.UseCase;
 import com.btree.shared.validation.Notification;
@@ -24,76 +25,89 @@ public class CreateProductUseCase implements UseCase<CreateProductCommand, Creat
     private final DomainEventPublisher domainEventPublisher;
     private final TransactionManager transactionManager;
 
-    public CreateProductUseCase(ProductGateway productGateway, DomainEventPublisher domainEventPublisher, TransactionManager transactionManager) {
+    public CreateProductUseCase(
+            final ProductGateway productGateway,
+            final DomainEventPublisher domainEventPublisher,
+            final TransactionManager transactionManager
+    ) {
         this.productGateway = productGateway;
         this.domainEventPublisher = domainEventPublisher;
         this.transactionManager = transactionManager;
     }
 
     @Override
-    public Either<Notification, CreateProductOutput> execute(CreateProductCommand command) {
+    public Either<Notification, CreateProductOutput> execute(final CreateProductCommand command) {
         final var notification = Notification.create();
 
-        // 1. Validações de unicidade — acumular todos os erros antes de retornar
-        if (command.slug() != null && this.productGateway.existsBySlug(command.slug())) {
-            notification.append(ProductError.SLUG_ALREADY_EXISTS);
-        }
-        if (command.sku() != null && this.productGateway.existsBySku(command.sku())) {
-            notification.append(ProductError.SKU_ALREADY_EXISTS);
-        }
-
+        validateUniqueness(command, notification);
         if (notification.hasError()) {
             return Left(notification);
         }
 
-        // 2. Resolver IDs opcionais
-        final var categoryId = command.categoryId() != null
-                ? CategoryId.from(command.categoryId()) : null;
-        final var brandId = command.brandId() != null
-                ? BrandId.from(command.brandId()) : null;
+        return Try(() -> transactionManager.execute(() -> {
+            final var product = buildProduct(command);
 
-        // 3. Criar aggregate + imagens e persistir dentro da transação.
-        //    ProductDimensions.of() e Product.create() lançam exceção se validação falhar → Try captura.
-        return Try(() -> this.transactionManager.execute(() -> {
-            final var dimensions = ProductDimensions.of(
-                    command.weight(), command.width(), command.height(), command.depth()
-            );
-
-            final var product = Product.create(
-                    categoryId, brandId,
-                    command.name(), command.slug(),
-                    command.description(), command.shortDescription(),
-                    command.sku(),
-                    command.price(), command.compareAtPrice(), command.costPrice(),
-                    command.lowStockThreshold(),
-                    dimensions
-            );
-
-            // Anexar imagens iniciais (se fornecidas)
-            if (command.images() != null && !command.images().isEmpty()) {
-                resolveImages(command.images(), product).forEach(img -> product.addImage(img, notification));
+            attachImages(command.images(), product, notification);
+            if (notification.hasError()) {
+                throw DomainException.with(notification.getErrors());
             }
 
             final var saved = productGateway.save(product);
-            this.domainEventPublisher.publishAll(product.getDomainEvents());
+            domainEventPublisher.publishAll(product.getDomainEvents());
             return CreateProductOutput.from(saved);
         })).toEither().mapLeft(Notification::create);
     }
 
-    // ── Helpers ───────────────────────────────────────────────
+    // ── Private helpers ───────────────────────────────────────
 
-    private List<ProductImage> resolveImages(
+    private void validateUniqueness(final CreateProductCommand command, final Notification notification) {
+        if (command.slug() != null && productGateway.existsBySlug(command.slug())) {
+            notification.append(ProductError.SLUG_ALREADY_EXISTS);
+        }
+        if (command.sku() != null && productGateway.existsBySku(command.sku())) {
+            notification.append(ProductError.SKU_ALREADY_EXISTS);
+        }
+    }
+
+    private Product buildProduct(final CreateProductCommand command) {
+        final var categoryId = command.categoryId() != null ? CategoryId.from(command.categoryId()) : null;
+        final var brandId    = command.brandId()    != null ? BrandId.from(command.brandId())       : null;
+        final var dimensions = ProductDimensions.of(
+                command.weight(), command.width(), command.height(), command.depth()
+        );
+        return Product.create(
+                categoryId, brandId,
+                command.name(), command.slug(),
+                command.description(), command.shortDescription(),
+                command.sku(),
+                command.price(), command.compareAtPrice(), command.costPrice(),
+                command.lowStockThreshold(),
+                dimensions
+        );
+    }
+
+    /**
+     * Anexa as imagens ao produto respeitando a ordem da lista.
+     * sortOrder é o índice na lista; apenas a primeira imagem é marcada como primary.
+     * Falha rápido: para de processar ao primeiro erro de validação.
+     */
+    private void attachImages(
             final List<CreateProductCommand.ImageEntry> entries,
-            final Product product
+            final Product product,
+            final Notification notification
     ) {
-        return entries.stream()
-                .map(e -> ProductImage.create(
-                        product.getId(),
-                        e.url(),
-                        e.altText(),
-                        e.sortOrder(),
-                        e.primary()
-                ))
-                .toList();
+        if (entries == null || entries.isEmpty()) return;
+        for (int i = 0; i < entries.size(); i++) {
+            final var entry = entries.get(i);
+            final var image = ProductImage.create(
+                    product.getId(),
+                    entry.url(),
+                    entry.altText(),
+                    i,
+                    i == 0
+            );
+            product.addImage(image, notification);
+            if (notification.hasError()) return;
+        }
     }
 }

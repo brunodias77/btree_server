@@ -1,6 +1,7 @@
 package com.btree.api.controller.catalog;
 
 import com.btree.api.dto.request.catalog.product.CreateProductRequest;
+import com.btree.api.dto.request.catalog.product.ProductImageRequest;
 import com.btree.api.dto.response.catalog.product.CreateProductResponse;
 import com.btree.api.dto.response.catalog.product.ListAllProductsResponse;
 import com.btree.api.dto.response.catalog.product.ListProductsByCategoryResponse;
@@ -11,7 +12,6 @@ import com.btree.application.usecase.catalog.product.list_all.ListAllProductsUse
 import com.btree.application.usecase.catalog.product.list_products_by_category.ListProductsByCategoryCommand;
 import com.btree.application.usecase.catalog.product.list_products_by_category.ListProductsByCategoryUseCase;
 import com.btree.shared.domain.DomainException;
-import java.util.Objects;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -20,7 +20,9 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/v1/catalog/products")
@@ -98,16 +100,16 @@ public class ProductController {
             @ApiResponse(responseCode = "422", description = "Regras de domínio violadas")
     })
     public CreateProductResponse create(@Valid @RequestBody final CreateProductRequest request) {
-        final var images = request.images() != null
-                ? request.images().stream()
-                  .map(i -> new CreateProductCommand.ImageEntry(
-                          i.url(), i.altText(),
-                          Objects.requireNonNullElse(i.sortOrder(), 0),
-                          Objects.requireNonNullElse(i.primary(), false)))
-                  .toList()
-                : List.<CreateProductCommand.ImageEntry>of();
+        return CreateProductResponse.from(
+                createProductUseCase.execute(toCommand(request))
+                        .getOrElseThrow(n -> DomainException.with(n.getErrors()))
+        );
+    }
 
-        final var command = new CreateProductCommand(
+    // ── Helpers ───────────────────────────────────────────────
+
+    private CreateProductCommand toCommand(final CreateProductRequest request) {
+        return new CreateProductCommand(
                 request.categoryId(),
                 request.brandId(),
                 request.name(),
@@ -123,12 +125,19 @@ public class ProductController {
                 request.width(),
                 request.height(),
                 request.depth(),
-                images
+                toImageEntries(request.images())
         );
+    }
 
-        return CreateProductResponse.from(
-                createProductUseCase.execute(command)
-                        .getOrElseThrow(n -> DomainException.with(n.getErrors()))
-        );
+    /**
+     * Converte e ordena as imagens do request. Se sortOrder for fornecido, imagens são
+     * ordenadas por ele (nulls por último); a posição resultante determina sortOrder e primary no UseCase.
+     */
+    private List<CreateProductCommand.ImageEntry> toImageEntries(final List<ProductImageRequest> images) {
+        if (images == null || images.isEmpty()) return List.of();
+        return images.stream()
+                .sorted(Comparator.comparingInt(i -> Objects.requireNonNullElse(i.sortOrder(), Integer.MAX_VALUE)))
+                .map(i -> new CreateProductCommand.ImageEntry(i.url(), i.altText()))
+                .toList();
     }
 }
