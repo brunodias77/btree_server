@@ -5,8 +5,12 @@ import com.btree.application.usecase.catalog.brand.list_all.ListAllBrandUseCase;
 import com.btree.application.usecase.catalog.brand.update.UpdateBrandUseCase;
 import com.btree.application.usecase.catalog.category.create.CreateCategoryUseCase;
 import com.btree.application.usecase.catalog.category.list_all_categories.ListAllCategoriesUseCase;
+import com.btree.application.usecase.catalog.product.create.CreateProductUseCase;
+import com.btree.application.usecase.catalog.product.list_all.ListAllProductsUseCase;
+import com.btree.application.usecase.catalog.product.list_products_by_category.ListProductsByCategoryUseCase;
 import com.btree.application.usecase.media.upload.UploadFileUseCase;
 import com.btree.domain.catalog.gateway.CategoryGateway;
+import com.btree.domain.catalog.gateway.ProductGateway;
 import com.btree.shared.contract.FileStorageService;
 import com.btree.application.usecase.job.clean_expired_tokens.CleanupExpiredTokensJob;
 import com.btree.application.usecase.job.process_domain_event.ProcessDomainEventsJob;
@@ -356,8 +360,27 @@ public class UseCaseConfig {
         return new CreateCategoryUseCase(categoryGateway, eventPublisher, transactionManager);
     }
 
+    @Bean
+    public ListAllProductsUseCase listAllProductsUseCase(final ProductGateway productGateway) {
+        return new ListAllProductsUseCase(productGateway);
+    }
 
+    @Bean
+    public ListProductsByCategoryUseCase listProductsByCategoryUseCase(
+            final ProductGateway productGateway,
+            final CategoryGateway categoryGateway
+    ) {
+        return new ListProductsByCategoryUseCase(productGateway, categoryGateway);
+    }
 
+    @Bean
+    public CreateProductUseCase createProductUseCase(
+            final ProductGateway productGateway,
+            final DomainEventPublisher eventPublisher,
+            final TransactionManager transactionManager
+    ) {
+        return new CreateProductUseCase(productGateway, eventPublisher, transactionManager);
+    }
 
 
 
@@ -425,14 +448,7 @@ public class UseCaseConfig {
 //        return new GetCategoryUseCase(categoryGateway);
 //    }
 //
-//    @Bean
-//    public CreateProductUseCase createProductUseCase(
-//            final ProductGateway productGateway,
-//            final DomainEventPublisher eventPublisher,
-//            final TransactionManager transactionManager
-//    ) {
-//        return new CreateProductUseCase(productGateway, eventPublisher, transactionManager);
-//    }
+
 //
 //    @Bean
 //    public UpdateProductUseCase updateProductUseCase(
@@ -484,13 +500,7 @@ public class UseCaseConfig {
 //        return new SearchProductsUseCase(productGateway);
 //    }
 //
-//    @Bean
-//    public ListProductsByCategoryUseCase listProductsByCategoryUseCase(
-//            final ProductGateway productGateway,
-//            final CategoryGateway categoryGateway
-//    ) {
-//        return new ListProductsByCategoryUseCase(productGateway, categoryGateway);
-//    }
+
 //
 //    @Bean
 //    public AddProductImageUseCase addProductImageUseCase(

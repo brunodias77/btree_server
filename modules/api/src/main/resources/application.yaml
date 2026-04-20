@@ -46,12 +46,9 @@ spring:
       fail-on-unknown-properties: false
     time-zone: UTC
 
-minio:
-  url: http://localhost:9000
-  access-key: minioadmin
-  secret-key: minioadmin
-  bucket: btree-uploads
-  public-url: http://localhost:9000
+storage:
+  upload-dir: uploads
+  base-url: http://localhost:8080/api
 
 security:
   jwt:

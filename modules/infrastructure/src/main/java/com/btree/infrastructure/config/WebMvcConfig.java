@@ -5,8 +5,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 
@@ -14,9 +16,22 @@ import java.util.List;
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final CorsProperties corsProperties;
+    private final LocalStorageProperties localStorageProperties;
 
-    public WebMvcConfig(final CorsProperties corsProperties) {
+    public WebMvcConfig(
+            final CorsProperties corsProperties,
+            final LocalStorageProperties localStorageProperties
+    ) {
         this.corsProperties = corsProperties;
+        this.localStorageProperties = localStorageProperties;
+    }
+
+    @Override
+    public void addResourceHandlers(final ResourceHandlerRegistry registry) {
+        final String uploadPath = Paths.get(localStorageProperties.getUploadDir())
+                .toAbsolutePath().normalize().toUri().toString();
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations(uploadPath);
     }
 
     /**

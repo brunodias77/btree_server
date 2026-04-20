@@ -76,7 +76,8 @@ public class SecurityConfig {
             "/v1/auth/2fa/verify",
             "/actuator/health",     // health check sem auth para load balancers e orquestradores
             "/swagger-ui/**",       // UI do Swagger (HTML + JS + CSS)
-            "/v3/api-docs/**"       // spec OpenAPI 3 em JSON/YAML
+            "/v3/api-docs/**",      // spec OpenAPI 3 em JSON/YAML
+            "/uploads/**"           // arquivos de mídia servidos localmente
     };
 
     /** Filtro customizado que extrai e valida o Bearer JWT de cada requisição. */

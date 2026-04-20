@@ -100,15 +100,6 @@
 		</dependency>
 
 		<!-- ============================================== -->
-		<!-- Object Storage (S3 / MinIO) -->
-		<!-- ============================================== -->
-		<dependency>
-			<groupId>io.minio</groupId>
-			<artifactId>minio</artifactId>
-			<version>8.5.17</version>
-		</dependency>
-
-		<!-- ============================================== -->
 		<!-- API Documentation -->
 		<!-- ============================================== -->
 		<dependency>
