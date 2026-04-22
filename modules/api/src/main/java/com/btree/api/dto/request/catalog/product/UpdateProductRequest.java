@@ -1,7 +1,6 @@
 package com.btree.api.dto.request.catalog.product;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -9,19 +8,14 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 /**
- * Payload HTTP de entrada para {@code POST /v1/catalog/products}.
- *
- * <p>Campos opcionais: {@code category_id}, {@code brand_id}, {@code description},
- * {@code short_description}, {@code compare_at_price}, {@code cost_price},
- * dimensões físicas e {@code images}.
+ * Payload HTTP de entrada para {@code PATCH /v1/catalog/products/{id}}.
  *
  * <p>Todos os campos multi-palavra usam {@code @JsonProperty} snake_case para
  * consistência com o frontend Angular.
  */
-public record CreateProductRequest(
+public record UpdateProductRequest(
 
         @JsonProperty("category_id")
         String categoryId,
@@ -61,13 +55,12 @@ public record CreateProductRequest(
 
         @JsonProperty("low_stock_threshold")
         @Min(0)
-        Integer lowStockThreshold,
+        int lowStockThreshold,
 
         BigDecimal weight,
         BigDecimal width,
         BigDecimal height,
         BigDecimal depth,
 
-        @Valid
-        List<ProductImageRequest> images
+        boolean featured
 ) {}

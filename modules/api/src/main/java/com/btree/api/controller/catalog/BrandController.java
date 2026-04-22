@@ -1,12 +1,16 @@
 package com.btree.api.controller.catalog;
 
 import com.btree.api.dto.request.catalog.brand.CreateBrandRequest;
+import com.btree.api.dto.request.catalog.brand.GetBrandByIdRequest;
 import com.btree.api.dto.request.catalog.brand.UpdateBrandRequest;
 import com.btree.api.dto.response.catalog.brand.BrandItemResponse;
 import com.btree.api.dto.response.catalog.brand.CreateBrandResponse;
+import com.btree.api.dto.response.catalog.brand.GetBrandByIdResponse;
 import com.btree.api.dto.response.catalog.brand.UpdateBrandResponse;
 import com.btree.application.usecase.catalog.brand.create.CreateBrandCommand;
 import com.btree.application.usecase.catalog.brand.create.CreateBrandUseCase;
+import com.btree.application.usecase.catalog.brand.get_by_id.GetBrandByIdCommand;
+import com.btree.application.usecase.catalog.brand.get_by_id.GetBrandByIdUseCase;
 import com.btree.application.usecase.catalog.brand.list_all.ListAllBrandCommand;
 import com.btree.application.usecase.catalog.brand.list_all.ListAllBrandUseCase;
 import com.btree.application.usecase.catalog.brand.update.UpdateBrandCommand;
@@ -31,14 +35,16 @@ public class BrandController {
     private final CreateBrandUseCase createBrandUseCase;
     private final ListAllBrandUseCase listAllBrandUseCase;
     private final UpdateBrandUseCase updateBrandUseCase;
+    private final GetBrandByIdUseCase getBrandByIdUseCase;
 
-    public BrandController(CreateBrandUseCase createBrandUseCase, ListAllBrandUseCase listAllBrandUseCase, UpdateBrandUseCase updateBrandUseCase) {
+    public BrandController(CreateBrandUseCase createBrandUseCase, ListAllBrandUseCase listAllBrandUseCase, UpdateBrandUseCase updateBrandUseCase, GetBrandByIdUseCase getBrandByIdUseCase) {
         this.createBrandUseCase = createBrandUseCase;
         this.listAllBrandUseCase = listAllBrandUseCase;
         this.updateBrandUseCase = updateBrandUseCase;
+        this.getBrandByIdUseCase = getBrandByIdUseCase;
     }
 
-// ── UC-52: CreateBrand ────────────────────────────────────────────────
+    // ── UC-52: CreateBrand ────────────────────────────────────────────────
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -115,6 +121,28 @@ public class BrandController {
                         request.description(),
                         request.logoUrl()
                 )).getOrElseThrow(n -> DomainException.with(n.getErrors()))
+        );
+    }
+
+    // ── UC-XX: GetBrandById ───────────────────────────────────────────────────
+
+    @GetMapping("/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(
+            summary = "Buscar marca por ID",
+            description = "Retorna os dados de uma marca ativa a partir do seu identificador unico " +
+                    "Marcas removidas (Soft-Delete) nao serao retornadas."
+    )
+    @ApiResponses(
+            {
+                    @ApiResponse(responseCode = "200", description = "Marca encontrada com sucesso"),
+                    @ApiResponse(responseCode = "422", description = "Marca nao encontrada, removida ou ID invalido")
+            }
+    )
+    public GetBrandByIdResponse getById(@PathVariable final String id){
+        return GetBrandByIdResponse.from(
+                getBrandByIdUseCase.execute(new GetBrandByIdCommand(id))
+                        .getOrElseThrow(n -> DomainException.with(n.getErrors()))
         );
     }
 }

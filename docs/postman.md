@@ -16,6 +16,8 @@ Crie um Environment no Postman chamado **btree-local** com as seguintes variáve
 | `setup_token_id` | _(vazio)_ | Preenchido automaticamente durante configuração de 2FA |
 | `address_id` | _(vazio)_ | Preenchido após cadastrar ou listar endereços |
 | `brand_id` | _(vazio)_ | Preenchido após criar ou listar marcas |
+| `category_id` | _(vazio)_ | Preenchido após criar ou listar categorias |
+| `product_id` | _(vazio)_ | Preenchido após criar ou listar produtos |
 
 ### Authorization Global
 
@@ -1151,6 +1153,267 @@ pm.environment.unset("address_id");
 
 ---
 
+### 5. Definir Endereço Padrão
+
+**`PATCH /v1/users/me/addresses/{id}/default`**
+
+Marca um endereço como padrão de entrega. Operação atômica e idempotente — se o endereço já for o padrão, retorna o mesmo resultado sem erro.
+
+**Request:**
+
+```http
+PATCH {{base_url}}/v1/users/me/addresses/{{address_id}}/default
+Authorization: Bearer {{access_token}}
+```
+
+Body vazio.
+
+**Response `200 OK`:**
+
+```json
+{
+  "id": "019600a1-1111-7d4e-a5f6-aaaaaaaaaaaa",
+  "user_id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "label": "Casa",
+  "recipient_name": "João Silva",
+  "street": "Rua das Flores",
+  "number": "123",
+  "complement": "Apto 45",
+  "neighborhood": "Centro",
+  "city": "São Paulo",
+  "state": "SP",
+  "postal_code": "01310-100",
+  "country": "BR",
+  "is_default": true,
+  "is_billing_address": false,
+  "created_at": "2026-04-19T10:00:00Z",
+  "updated_at": "2026-04-19T11:30:00Z"
+}
+```
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `401` | Token ausente, inválido ou expirado |
+| `422` | Endereço não encontrado, já removido ou pertence a outro usuário |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("is_default é true", () => pm.expect(body.is_default).to.be.true);
+pm.test("id confere", () => pm.expect(body.id).to.equal(pm.environment.get("address_id")));
+```
+
+---
+
+---
+
+## Contexto: Catalog — Categories
+
+**Base path:** `/v1/catalog/categories`  
+**Segurança:** Todos os endpoints requerem **JWT válido** no header `Authorization: Bearer {{access_token}}`.
+
+---
+
+### 1. Criar Categoria
+
+**`POST /v1/catalog/categories`**
+
+Cria uma nova categoria de produto. Omita `parent_id` para criar categoria raiz. O slug deve ser único e seguir formato kebab-case.
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/catalog/categories
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Calçados",
+  "slug": "calcados",
+  "description": "Tênis, sapatos e sandálias",
+  "image_url": "https://cdn.example.com/calcados.jpg",
+  "parent_id": null,
+  "sort_order": 1
+}
+```
+
+**Validações:**
+
+| Campo | Obrigatório | Restrições |
+|---|---|---|
+| `name` | **Sim** | Máximo 200 caracteres |
+| `slug` | **Sim** | Máximo 256 caracteres; kebab-case (`^[a-z0-9]+(?:-[a-z0-9]+)*$`) |
+| `description` | Não | Texto livre |
+| `image_url` | Não | Máximo 512 caracteres |
+| `parent_id` | Não | UUID de categoria pai existente; omitir para raiz |
+| `sort_order` | Não | Inteiro ≥ 0; padrão `0` |
+
+**Response `201 Created`:**
+
+```json
+{
+  "id": "019600a1-2222-7d4e-a5f6-bbbbbbbbbbbb",
+  "name": "Calçados",
+  "slug": "calcados",
+  "description": "Tênis, sapatos e sandálias",
+  "image_url": "https://cdn.example.com/calcados.jpg",
+  "parent_id": null,
+  "sort_order": 1,
+  "created_at": "2026-04-19T10:00:00Z",
+  "updated_at": "2026-04-19T10:00:00Z"
+}
+```
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Campo obrigatório ausente ou slug inválido |
+| `401` | Token ausente ou inválido |
+| `422` | Slug já em uso, `parent_id` não encontrado ou removido |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 201", () => pm.response.to.have.status(201));
+const body = pm.response.json();
+pm.test("id presente", () => {
+  pm.expect(body.id).to.be.a("string").and.not.be.empty;
+  pm.environment.set("category_id", body.id);
+});
+pm.test("slug confere", () => pm.expect(body.slug).to.equal("calcados"));
+```
+
+---
+
+### 2. Listar Categorias
+
+**`GET /v1/catalog/categories`**
+
+Retorna a árvore completa de categorias ativas (não removidas), com filhos aninhados no campo `children`. Respeita `sort_order ASC` em cada nível. Categorias soft-deletadas são excluídas.
+
+**Request:**
+
+```http
+GET {{base_url}}/v1/catalog/categories
+Authorization: Bearer {{access_token}}
+```
+
+**Response `200 OK`:**
+
+```json
+[
+  {
+    "id": "019600a1-2222-7d4e-a5f6-bbbbbbbbbbbb",
+    "name": "Calçados",
+    "slug": "calcados",
+    "description": "Tênis, sapatos e sandálias",
+    "image_url": "https://cdn.example.com/calcados.jpg",
+    "parent_id": null,
+    "sort_order": 1,
+    "children": [
+      {
+        "id": "019600a1-3333-7d4e-a5f6-cccccccccccc",
+        "name": "Tênis",
+        "slug": "tenis",
+        "description": null,
+        "image_url": null,
+        "parent_id": "019600a1-2222-7d4e-a5f6-bbbbbbbbbbbb",
+        "sort_order": 0,
+        "children": []
+      }
+    ]
+  }
+]
+```
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `401` | Token ausente ou inválido |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("Resposta é array", () => pm.expect(body).to.be.an("array"));
+if (body.length > 0) {
+  pm.environment.set("category_id", body[0].id);
+  pm.test("Primeiro item tem children", () => pm.expect(body[0].children).to.be.an("array"));
+}
+```
+
+---
+
+### 3. Editar Categoria
+
+**`PUT /v1/catalog/categories/{id}`**
+
+Atualiza todos os campos mutáveis de uma categoria existente (PUT semântico — substituição completa). Campos ausentes são gravados como `null`. Não é possível editar categorias soft-deletadas.
+
+**Request:**
+
+```http
+PUT {{base_url}}/v1/catalog/categories/{{category_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Calçados Esportivos",
+  "slug": "calcados-esportivos",
+  "description": "Tênis e chuteiras",
+  "image_url": "https://cdn.example.com/calcados-v2.jpg",
+  "parent_id": null,
+  "sort_order": 2
+}
+```
+
+**Validações:** Idênticas ao `POST /v1/catalog/categories`.
+
+**Response `200 OK`:**
+
+```json
+{
+  "id": "019600a1-2222-7d4e-a5f6-bbbbbbbbbbbb",
+  "name": "Calçados Esportivos",
+  "slug": "calcados-esportivos",
+  "description": "Tênis e chuteiras",
+  "image_url": "https://cdn.example.com/calcados-v2.jpg",
+  "parent_id": null,
+  "sort_order": 2,
+  "created_at": "2026-04-19T10:00:00Z",
+  "updated_at": "2026-04-19T12:00:00Z"
+}
+```
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Campo obrigatório ausente ou slug inválido |
+| `401` | Token ausente ou inválido |
+| `422` | Categoria não encontrada, já deletada, slug em uso por outra categoria, ou `parent_id` inválido |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("id confere", () => pm.expect(body.id).to.equal(pm.environment.get("category_id")));
+pm.test("updated_at presente", () => pm.expect(body.updated_at).to.be.a("string"));
+pm.test("name atualizado", () => pm.expect(body.name).to.equal("Calçados Esportivos"));
+```
+
 ---
 
 ## Contexto: Catalog — Brands
@@ -1358,6 +1621,434 @@ pm.test("name atualizado", () => pm.expect(body.name).to.equal("Nike Updated"));
 
 ---
 
+## Contexto: Catalog — Products
+
+**Base path:** `/v1/catalog/products`  
+**Segurança:** Endpoints de escrita requerem **JWT válido**. Endpoints de leitura são públicos.
+
+---
+
+### 1. Criar Produto
+
+**`POST /v1/catalog/products`**
+
+Cadastra um novo produto com status `DRAFT`. Slug e SKU devem ser únicos.
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/catalog/products
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Tênis Air Max",
+  "slug": "tenis-air-max",
+  "sku": "NK-AM-001",
+  "description": "Tênis esportivo com amortecimento Air Max",
+  "price": 599.90,
+  "original_price": 799.90,
+  "brand_id": "{{brand_id}}",
+  "category_id": "{{category_id}}",
+  "stock_quantity": 50,
+  "weight": 0.8,
+  "tags": ["esportivo", "corrida"],
+  "is_featured": false
+}
+```
+
+**Validações:**
+
+| Campo | Obrigatório | Restrições |
+|---|---|---|
+| `name` | **Sim** | Máximo 500 caracteres |
+| `slug` | **Sim** | Kebab-case; único entre produtos |
+| `sku` | **Sim** | Máximo 100 caracteres; único |
+| `description` | Não | Texto livre |
+| `price` | **Sim** | Decimal > 0 |
+| `original_price` | Não | Decimal > 0 |
+| `brand_id` | Não | UUID de marca existente |
+| `category_id` | Não | UUID de categoria existente |
+| `stock_quantity` | Não | Inteiro ≥ 0; padrão `0` |
+| `weight` | Não | Decimal > 0 (kg) |
+| `tags` | Não | Array de strings |
+| `is_featured` | Não | `true` ou `false`; padrão `false` |
+
+**Response `201 Created`:**
+
+```json
+{
+  "id": "019600a1-4444-7d4e-a5f6-dddddddddddd",
+  "name": "Tênis Air Max",
+  "slug": "tenis-air-max",
+  "sku": "NK-AM-001",
+  "description": "Tênis esportivo com amortecimento Air Max",
+  "price": 599.90,
+  "original_price": 799.90,
+  "status": "DRAFT",
+  "stock_quantity": 50,
+  "brand_id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "category_id": "019600a1-2222-7d4e-a5f6-bbbbbbbbbbbb",
+  "weight": 0.8,
+  "tags": ["esportivo", "corrida"],
+  "is_featured": false,
+  "created_at": "2026-04-19T10:00:00Z",
+  "updated_at": "2026-04-19T10:00:00Z"
+}
+```
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Campo obrigatório ausente ou formato inválido |
+| `401` | Token ausente ou inválido |
+| `422` | Slug ou SKU já em uso; `brand_id`/`category_id` não encontrado |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 201", () => pm.response.to.have.status(201));
+const body = pm.response.json();
+pm.test("id presente", () => {
+  pm.expect(body.id).to.be.a("string").and.not.be.empty;
+  pm.environment.set("product_id", body.id);
+});
+pm.test("status é DRAFT", () => pm.expect(body.status).to.equal("DRAFT"));
+pm.test("slug confere", () => pm.expect(body.slug).to.equal("tenis-air-max"));
+```
+
+---
+
+### 2. Listar Todos os Produtos
+
+**`GET /v1/catalog/products`**
+
+Retorna lista paginada de todos os produtos independente de status. Endpoint público.
+
+**Request:**
+
+```http
+GET {{base_url}}/v1/catalog/products?page=0&size=20
+```
+
+**Query Parameters:**
+
+| Parâmetro | Obrigatório | Padrão | Descrição |
+|---|---|---|---|
+| `page` | Não | `0` | Número da página (zero-based) |
+| `size` | Não | `20` | Itens por página |
+
+**Response `200 OK`:**
+
+```json
+{
+  "items": [
+    {
+      "id": "019600a1-4444-7d4e-a5f6-dddddddddddd",
+      "name": "Tênis Air Max",
+      "slug": "tenis-air-max",
+      "sku": "NK-AM-001",
+      "price": 599.90,
+      "status": "DRAFT",
+      "stock_quantity": 50,
+      "is_featured": false,
+      "created_at": "2026-04-19T10:00:00Z"
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "total": 1,
+  "total_pages": 1
+}
+```
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("items é array", () => pm.expect(body.items).to.be.an("array"));
+pm.test("paginação presente", () => {
+  pm.expect(body.page).to.be.a("number");
+  pm.expect(body.total).to.be.a("number");
+});
+if (body.items.length > 0) {
+  pm.environment.set("product_id", body.items[0].id);
+}
+```
+
+---
+
+### 3. Buscar Produto por ID
+
+**`GET /v1/catalog/products/{id}`**
+
+Retorna dados completos de um produto incluindo imagens. Retorna `404` para produtos soft-deletados. Endpoint público.
+
+**Request:**
+
+```http
+GET {{base_url}}/v1/catalog/products/{{product_id}}
+```
+
+**Response `200 OK`:**
+
+```json
+{
+  "id": "019600a1-4444-7d4e-a5f6-dddddddddddd",
+  "name": "Tênis Air Max",
+  "slug": "tenis-air-max",
+  "sku": "NK-AM-001",
+  "description": "Tênis esportivo com amortecimento Air Max",
+  "price": 599.90,
+  "original_price": 799.90,
+  "status": "DRAFT",
+  "stock_quantity": 50,
+  "brand_id": "019600a1-b2c3-7d4e-a5f6-789012345678",
+  "category_id": "019600a1-2222-7d4e-a5f6-bbbbbbbbbbbb",
+  "weight": 0.8,
+  "tags": ["esportivo", "corrida"],
+  "is_featured": false,
+  "images": [],
+  "created_at": "2026-04-19T10:00:00Z",
+  "updated_at": "2026-04-19T10:00:00Z"
+}
+```
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `404` | Produto não encontrado ou soft-deletado |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("id confere", () => pm.expect(body.id).to.equal(pm.environment.get("product_id")));
+pm.test("images é array", () => pm.expect(body.images).to.be.an("array"));
+```
+
+---
+
+### 4. Listar Produtos por Categoria
+
+**`GET /v1/catalog/products/by-category/{categoryId}`**
+
+Retorna lista paginada de produtos com status `ACTIVE` de uma categoria específica. Endpoint público.
+
+**Request:**
+
+```http
+GET {{base_url}}/v1/catalog/products/by-category/{{category_id}}?page=0&size=20
+```
+
+**Query Parameters:**
+
+| Parâmetro | Obrigatório | Padrão | Descrição |
+|---|---|---|---|
+| `page` | Não | `0` | Número da página (zero-based) |
+| `size` | Não | `20` | Itens por página |
+
+**Response `200 OK`:** Mesmo formato de `/v1/catalog/products` — somente produtos `ACTIVE`.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `422` | Categoria não encontrada |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("items é array", () => pm.expect(body.items).to.be.an("array"));
+body.items.forEach(item => {
+  pm.test(`Produto ${item.id} tem status ACTIVE`, () => pm.expect(item.status).to.equal("ACTIVE"));
+});
+```
+
+---
+
+### 5. Atualizar Produto
+
+**`PATCH /v1/catalog/products/{id}`**
+
+Atualiza os dados cadastrais de um produto. Não altera status nem estoque.
+
+**Request:**
+
+```http
+PATCH {{base_url}}/v1/catalog/products/{{product_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Tênis Air Max Plus",
+  "slug": "tenis-air-max-plus",
+  "sku": "NK-AM-001",
+  "description": "Versão atualizada com tecnologia Plus",
+  "price": 649.90,
+  "original_price": 849.90,
+  "brand_id": "{{brand_id}}",
+  "category_id": "{{category_id}}",
+  "weight": 0.85,
+  "tags": ["esportivo", "corrida", "premium"],
+  "is_featured": true
+}
+```
+
+**Response `200 OK`:** Produto atualizado com `updated_at` novo.
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | Formato inválido |
+| `401` | Token ausente ou inválido |
+| `422` | Produto não encontrado, slug/SKU em uso por outro produto |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("id confere", () => pm.expect(body.id).to.equal(pm.environment.get("product_id")));
+pm.test("updated_at presente", () => pm.expect(body.updated_at).to.be.a("string"));
+```
+
+---
+
+### 6. Ajustar Estoque
+
+**`POST /v1/catalog/products/{productId}/stock/adjustments`**
+
+Registra entrada ou saída manual de estoque. `delta > 0` = entrada, `delta < 0` = saída. Transiciona automaticamente o status `ACTIVE ↔ OUT_OF_STOCK` conforme necessário.
+
+**Request:**
+
+```http
+POST {{base_url}}/v1/catalog/products/{{product_id}}/stock/adjustments
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+```
+
+```json
+{
+  "delta": 10,
+  "reason": "PURCHASE",
+  "notes": "Recebimento NF 12345"
+}
+```
+
+**Validações:**
+
+| Campo | Obrigatório | Restrições |
+|---|---|---|
+| `delta` | **Sim** | Inteiro ≠ 0; negativo para saída |
+| `reason` | **Sim** | Enum: `PURCHASE`, `RETURN`, `ADJUSTMENT`, `DAMAGE`, `SALE`, `RESERVATION_RELEASE` |
+| `notes` | Não | Texto livre |
+
+**Response `200 OK`:**
+
+```json
+{
+  "product_id": "019600a1-4444-7d4e-a5f6-dddddddddddd",
+  "previous_quantity": 50,
+  "new_quantity": 60,
+  "delta": 10,
+  "reason": "PURCHASE",
+  "movement_id": "019600a1-5555-7d4e-a5f6-eeeeeeeeeeee"
+}
+```
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `400` | `delta` = 0 ou `reason` inválido |
+| `401` | Token ausente ou inválido |
+| `422` | Produto não encontrado; estoque ficaria negativo |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("new_quantity é number", () => pm.expect(body.new_quantity).to.be.a("number"));
+pm.test("delta confere", () => pm.expect(body.delta).to.equal(10));
+```
+
+---
+
+### 7. Histórico de Movimentações de Estoque
+
+**`GET /v1/catalog/products/{productId}/stock/movements`**
+
+Retorna o histórico paginado de movimentações de estoque do produto, ordenado do mais recente para o mais antigo.
+
+**Request:**
+
+```http
+GET {{base_url}}/v1/catalog/products/{{product_id}}/stock/movements?page=0&size=20
+Authorization: Bearer {{access_token}}
+```
+
+**Query Parameters:**
+
+| Parâmetro | Obrigatório | Padrão | Descrição |
+|---|---|---|---|
+| `page` | Não | `0` | Número da página (zero-based) |
+| `size` | Não | `20` | Itens por página |
+
+**Response `200 OK`:**
+
+```json
+{
+  "items": [
+    {
+      "id": "019600a1-5555-7d4e-a5f6-eeeeeeeeeeee",
+      "product_id": "019600a1-4444-7d4e-a5f6-dddddddddddd",
+      "delta": 10,
+      "quantity_before": 50,
+      "quantity_after": 60,
+      "reason": "PURCHASE",
+      "notes": "Recebimento NF 12345",
+      "created_at": "2026-04-19T10:30:00Z"
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "total": 1,
+  "total_pages": 1
+}
+```
+
+**Cenários de Erro:**
+
+| Status | Causa |
+|---|---|
+| `401` | Token ausente ou inválido |
+| `422` | Produto não encontrado |
+
+**Scripts de Teste (Tests tab):**
+
+```javascript
+pm.test("Status 200", () => pm.response.to.have.status(200));
+const body = pm.response.json();
+pm.test("items é array", () => pm.expect(body.items).to.be.an("array"));
+pm.test("paginação presente", () => pm.expect(body.total).to.be.a("number"));
+```
+
+---
+
 ## Contexto: Media
 
 **Base path:** `/v1/media`  
@@ -1539,6 +2230,40 @@ Execute as requests na seguinte ordem:
 4. Testar upload com arquivo `.pdf` → deve retornar `400` (tipo não suportado)
 5. Testar upload sem arquivo (campo `file` vazio) → deve retornar `400`
 
+### Fluxo 12: CRUD de Categorias
+
+> Pré-requisito: sessão ativa (`access_token` no environment).
+
+1. **Listar Categorias** `GET /v1/catalog/categories` → array vazio ou existente
+2. **Criar Categoria raiz** `POST /v1/catalog/categories` com `name`, `slug`, sem `parent_id`
+   - Deve retornar `201 Created`; script salva `category_id`
+3. **Criar Subcategoria** `POST /v1/catalog/categories` com `parent_id: "{{category_id}}"`
+   - Deve retornar `201 Created` com `parent_id` preenchido
+4. **Listar Categorias** → raiz com subcategoria no campo `children`
+5. **Editar Categoria** `PUT /v1/catalog/categories/{{category_id}}` → `200 OK`, `updated_at` novo
+6. Testar slug duplicado → `POST` com mesmo slug → deve retornar `422`
+7. Testar `parent_id` inexistente → deve retornar `422`
+
+---
+
+### Fluxo 13: CRUD de Produtos e Estoque
+
+> Pré-requisito: sessão ativa, `brand_id` e `category_id` no environment.
+
+1. **Criar Produto** `POST /v1/catalog/products`
+   - Deve retornar `201 Created` com `status: "DRAFT"`; script salva `product_id`
+2. **Buscar Produto por ID** `GET /v1/catalog/products/{{product_id}}` → dados completos com `images: []`
+3. **Listar Todos os Produtos** `GET /v1/catalog/products` → produto aparece (qualquer status)
+4. **Listar por Categoria** `GET /v1/catalog/products/by-category/{{category_id}}` → array vazio (produto ainda é DRAFT)
+5. **Atualizar Produto** `PATCH /v1/catalog/products/{{product_id}}` → `200 OK`, `updated_at` novo
+6. **Ajustar Estoque** `POST /v1/catalog/products/{{product_id}}/stock/adjustments`
+   - Body: `{ "delta": 10, "reason": "PURCHASE" }` → confirmar `new_quantity = previous + 10`
+7. **Histórico de Movimentações** `GET /v1/catalog/products/{{product_id}}/stock/movements` → 1 item
+8. Testar saída de estoque maior que disponível → `delta: -999` → deve retornar `422`
+9. Testar SKU duplicado → `POST` com mesmo `sku` → deve retornar `422`
+
+---
+
 ### Fluxo 9: Login com 2FA Ativo
 
 > Pré-requisito: conta com 2FA ativado (Fluxo 6 concluído).
@@ -1587,15 +2312,35 @@ Execute as requests na seguinte ordem:
 | `/v1/users/me/addresses` | `GET` | Bearer | Listar endereços |
 | `/v1/users/me/addresses/{id}` | `PUT` | Bearer | Editar endereço |
 | `/v1/users/me/addresses/{id}` | `DELETE` | Bearer | Remover endereço (soft delete) |
-| `/v1/users/me/addresses/{id}/default` | `PATCH` | Bearer | Definir endereço padrão |
+| `/v1/users/me/addresses/{id}/default` | `PATCH` | Bearer | Definir endereço padrão (idempotente) |
 
-### Catalog
+### Catalog — Categories
+
+| Endpoint | Método | Auth | Descrição |
+|---|---|---|---|
+| `/v1/catalog/categories` | `POST` | Bearer | Criar categoria |
+| `/v1/catalog/categories` | `GET` | Bearer | Listar árvore de categorias ativas |
+| `/v1/catalog/categories/{id}` | `PUT` | Bearer | Editar categoria (PUT semântico) |
+
+### Catalog — Brands
 
 | Endpoint | Método | Auth | Descrição |
 |---|---|---|---|
 | `/v1/catalog/brands` | `POST` | Bearer | Criar marca |
 | `/v1/catalog/brands` | `GET` | Bearer | Listar marcas ativas |
 | `/v1/catalog/brands/{id}` | `PUT` | Bearer | Editar marca (PUT semântico) |
+
+### Catalog — Products
+
+| Endpoint | Método | Auth | Descrição |
+|---|---|---|---|
+| `/v1/catalog/products` | `POST` | Bearer | Criar produto (status DRAFT) |
+| `/v1/catalog/products` | `GET` | Público | Listar todos os produtos (paginado) |
+| `/v1/catalog/products/{id}` | `GET` | Público | Buscar produto por ID |
+| `/v1/catalog/products/by-category/{categoryId}` | `GET` | Público | Listar produtos ACTIVE de uma categoria (paginado) |
+| `/v1/catalog/products/{id}` | `PATCH` | Bearer | Atualizar dados do produto |
+| `/v1/catalog/products/{id}/stock/adjustments` | `POST` | Bearer | Ajustar estoque (entrada/saída manual) |
+| `/v1/catalog/products/{id}/stock/movements` | `GET` | Bearer | Histórico de movimentações de estoque (paginado) |
 
 ### Media
 

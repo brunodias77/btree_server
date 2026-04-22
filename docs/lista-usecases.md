@@ -24,32 +24,32 @@ Lista completa de use cases derivados do schema `db.sql`, organizados por módul
 
 | # | Prioridade | Tipo | Use Case | Tabelas envolvidas |
 |---|:---:|:---:|----------|-------------------|
-| 1 | 🔴 P0 | `[CMD]` | **RegisterUser** — Criar conta com email/senha | `users.users`, `users.profiles`, `users.notification_preferences` | ✅✅
-| 2 | 🔴 P0 | `[CMD]` | **AuthenticateUser** — Login com email/senha | `users.users`, `users.sessions`, `users.login_history` |✅✅
-| 3 | 🔴 P0 | `[CMD]` | **RefreshSession** — Renovar access token via refresh token | `users.sessions` |✅✅
-| 4 | 🔴 P0 | `[CMD]` | **LogoutUser** — Revogar sessão atual | `users.sessions` |✅✅
-| 5 | 🔴 P0 | `[QRY]` | **GetCurrentUser** — Retornar dados do usuário autenticado | `users.users`, `users.profiles` | ✅✅
-| 6 | 🟠 P1 | `[CMD]` | **VerifyEmail** — Confirmar email via token | `users.user_tokens`, `users.users` |✅✅
-| 7 | 🟠 P1 | `[CMD]` | **RequestPasswordReset** — Gerar token de reset | `users.user_tokens` |✅✅
-| 8 | 🟠 P1 | `[CMD]` | **ResetPassword** — Alterar senha via token | `users.user_tokens`, `users.users` |✅✅
-| 9 | 🟡 P2 | `[CMD]` | **LoginWithSocialProvider** — OAuth (Google, Facebook) | `users.user_social_logins`, `users.users`, `users.sessions` |✅✅
-| 10 | 🟡 P2 | `[CMD]` | **EnableTwoFactor** — Ativar 2FA (TOTP) | `users.users`, `users.user_tokens` |✅
-| 11 | 🟡 P2 | `[CMD]` | **VerifyTwoFactor** — Validar código 2FA no login | `users.user_tokens` |✅
-| 12 | 🟡 P2 | `[CMD]` | **LogoutAllSessions** — Revogar todas as sessões | `users.sessions` |✅
-| 13 | 🟢 P3 | `[JOB]` | **CleanupExpiredTokens** — Remover tokens expirados | `users.user_tokens` |✅
-| 14 | 🟢 P3 | `[JOB]` | **CleanupExpiredSessions** — Remover sessões expiradas | `users.sessions` |✅
+| 1 | 🔴 P0 | `[CMD]` | ✅ **RegisterUser** — Criar conta com email/senha | `users.users`, `users.profiles`, `users.notification_preferences` | 
+| 2 | 🔴 P0 | `[CMD]` | ✅ **AuthenticateUser** — Login com email/senha | `users.users`, `users.sessions`, `users.login_history` |
+| 3 | 🔴 P0 | `[CMD]` | ✅ **RefreshSession** — Renovar access token via refresh token | `users.sessions` |
+| 4 | 🔴 P0 | `[CMD]` | ✅ **LogoutUser** — Revogar sessão atual | `users.sessions` |
+| 5 | 🔴 P0 | `[QRY]` | ✅ **GetCurrentUser** — Retornar dados do usuário autenticado | `users.users`, `users.profiles` | 
+| 6 | 🟠 P1 | `[CMD]` | ✅ **VerifyEmail** — Confirmar email via token | `users.user_tokens`, `users.users` |
+| 7 | 🟠 P1 | `[CMD]` | ✅ **RequestPasswordReset** — Gerar token de reset | `users.user_tokens` |
+| 8 | 🟠 P1 | `[CMD]` | ✅ **ResetPassword** — Alterar senha via token | `users.user_tokens`, `users.users` |
+| 9 | 🟡 P2 | `[CMD]` | ✅ **LoginWithSocialProvider** — OAuth (Google, Facebook) | `users.user_social_logins`, `users.users`, `users.sessions` |
+| 10 | 🟡 P2 | `[CMD]` | ✅ **EnableTwoFactor** — Ativar 2FA (TOTP) | `users.users`, `users.user_tokens` |
+| 11 | 🟡 P2 | `[CMD]` | ✅ **VerifyTwoFactor** — Validar código 2FA no login | `users.user_tokens` |
+| 12 | 🟡 P2 | `[CMD]` | **LogoutAllSessions** — Revogar todas as sessões | `users.sessions` |
+| 13 | 🟢 P3 | `[JOB]` | **CleanupExpiredTokens** — Remover tokens expirados | `users.user_tokens` |
+| 14 | 🟢 P3 | `[JOB]` | **CleanupExpiredSessions** — Remover sessões expiradas | `users.sessions` |
 
 ### 1.2 Perfil e Endereços
 
 | # | Prioridade | Tipo | Use Case | Tabelas envolvidas |
 |---|:---:|:---:|----------|-------------------|
-| 15 | 🔴 P0 | `[CMD]` | **UpdateProfile** — Editar nome, CPF, preferências | `users.profiles` |✅✅
-| 16 | 🔴 P0 | `[QRY]` | **GetProfile** — Consultar perfil completo | `users.profiles` |✅✅
-| 17 | 🔴 P0 | `[CMD]` | **AddAddress** — Cadastrar endereço de entrega | `users.addresses` |✅✅
-| 18 | 🔴 P0 | `[CMD]` | **UpdateAddress** — Editar endereço existente | `users.addresses` |✅
-| 19 | 🔴 P0 | `[CMD]` | **DeleteAddress** — Soft delete de endereço | `users.addresses` |✅
-| 20 | 🔴 P0 | `[CMD]` | **SetDefaultAddress** — Marcar como padrão | `users.addresses` |✅
-| 21 | 🔴 P0 | `[QRY]` | **ListAddresses** — Listar endereços do usuário | `users.addresses` |
+| 15 | 🔴 P0 | `[CMD]` | ✅ **UpdateProfile** — Editar nome, CPF, preferências | `users.profiles` |
+| 16 | 🔴 P0 | `[QRY]` | ✅ **GetProfile** — Consultar perfil completo | `users.profiles` |
+| 17 | 🔴 P0 | `[CMD]` | ✅ **AddAddress** — Cadastrar endereço de entrega | `users.addresses` |
+| 18 | 🔴 P0 | `[CMD]` | ✅ **UpdateAddress** — Editar endereço existente | `users.addresses` |
+| 19 | 🔴 P0 | `[CMD]` | ✅ **DeleteAddress** — Soft delete de endereço | `users.addresses` |
+| 20 | 🔴 P0 | `[CMD]` | ✅ **SetDefaultAddress** — Marcar como padrão | `users.addresses` |
+| 21 | 🔴 P0 | `[QRY]` | ✅ **ListAddresses** — Listar endereços do usuário | `users.addresses` |
 | 22 | 🟠 P1 | `[CMD]` | **ChangePassword** — Alterar senha estando autenticado | `users.users` |
 | 23 | 🟡 P2 | `[CMD]` | **ChangeEmail** — Alterar email (com reverificação) | `users.users`, `users.user_tokens` |
 | 24 | 🟡 P2 | `[CMD]` | **UpdatePhoneNumber** — Atualizar/verificar telefone | `users.users`, `users.user_tokens` |
@@ -94,10 +94,10 @@ Lista completa de use cases derivados do schema `db.sql`, organizados por módul
 
 | # | Prioridade | Tipo | Use Case | Tabelas envolvidas |
 |---|:---:|:---:|----------|-------------------|
-| 45 | 🔴 P0 | `[CMD]` | **CreateCategory** — Criar categoria com hierarquia | `catalog.categories` |✅✅
-| 46 | 🔴 P0 | `[CMD]` | **UpdateCategory** — Editar nome, slug, imagem | `catalog.categories` |✅✅
-| 47 | 🔴 P0 | `[QRY]` | **GetCategory** — Consultar categoria individual | `catalog.categories` |✅✅
-| 48 | 🔴 P0 | `[QRY]` | **ListCategories** — Árvore de categorias ativas | `catalog.categories` |✅✅
+| 45 | 🔴 P0 | `[CMD]` | ✅ **CreateCategory** — Criar categoria com hierarquia | `catalog.categories` |
+| 46 | 🔴 P0 | `[CMD]` | ✅ **UpdateCategory** — Editar nome, slug, imagem | `catalog.categories` |
+| 47 | 🔴 P0 | `[QRY]` | **GetCategory** — Consultar categoria individual | `catalog.categories` |
+| 48 | 🔴 P0 | `[QRY]` | ✅ **ListCategories** — Árvore de categorias ativas | `catalog.categories` |
 | 49 | 🟠 P1 | `[CMD]` | **ReorderCategories** — Alterar sort_order | `catalog.categories` |
 | 50 | 🟠 P1 | `[CMD]` | **DeactivateCategory** — Soft delete | `catalog.categories` |
 | 51 | 🟡 P2 | `[QRY]` | **GetCategoryBreadcrumb** — Caminho hierárquico (via path) | `catalog.categories` |
@@ -106,26 +106,26 @@ Lista completa de use cases derivados do schema `db.sql`, organizados por módul
 
 | # | Prioridade | Tipo | Use Case | Tabelas envolvidas |
 |---|:---:|:---:|----------|-------------------|
-| 52 | 🔴 P0 | `[CMD]` | **CreateBrand** — Cadastrar marca | `catalog.brands` |✅✅
-| 53 | 🔴 P0 | `[CMD]` | **UpdateBrand** — Editar marca | `catalog.brands` |✅✅
+| 52 | 🔴 P0 | `[CMD]` | ✅ **CreateBrand** — Cadastrar marca | `catalog.brands` |
+| 53 | 🔴 P0 | `[CMD]` | ✅ **UpdateBrand** — Editar marca | `catalog.brands` |
 | 54 | 🔴 P0 | `[QRY]` | **GetBrand** — Consultar marca individual | `catalog.brands` |
-| 55 | 🔴 P0 | `[QRY]` | **ListBrands** — Listar marcas ativas | `catalog.brands` |
+| 55 | 🔴 P0 | `[QRY]` | ✅ **ListBrands** — Listar marcas ativas | `catalog.brands` |
 | 56 | 🟠 P1 | `[CMD]` | **DeactivateBrand** — Soft delete de marca | `catalog.brands` |
 
 ### 2.3 Produtos
 
 | # | Prioridade | Tipo | Use Case | Tabelas envolvidas |
 |---|:---:|:---:|----------|-------------------|
-| 57 | 🔴 P0 | `[CMD]` | **CreateProduct** — Cadastrar produto (DRAFT) | `catalog.products`, `catalog.product_images` |✅✅
-| 58 | 🔴 P0 | `[CMD]` | **UpdateProduct** — Editar dados do produto | `catalog.products` |✅✅
-| 59 | 🔴 P0 | `[CMD]` | **PublishProduct** — Status DRAFT → ACTIVE | `catalog.products` |✅✅
-| 60 | 🔴 P0 | `[CMD]` | **PauseProduct** — Status ACTIVE → PAUSED | `catalog.products` |✅✅
-| 61 | 🔴 P0 | `[CMD]` | **ArchiveProduct** — Soft delete / ARCHIVED | `catalog.products` |✅✅
-| 62 | 🔴 P0 | `[QRY]` | **GetProduct** — Detalhe do produto (público) | `catalog.products`, `catalog.product_images`, `catalog.categories`, `catalog.brands` |✅✅
-| 63 | 🔴 P0 | `[QRY]` | **SearchProducts** — Busca com filtros (nome, categoria, preço, atributos) | `catalog.products` (trigram + GIN) |✅✅
-| 64 | 🔴 P0 | `[QRY]` | **ListProductsByCategory** — Produtos de uma categoria | `catalog.products`, `catalog.categories` |✅✅
-| 65 | 🟠 P1 | `[CMD]` | **ManageProductImages** — Upload, reordenar, definir primária | `catalog.product_images` |✅✅
-| 66 | 🟠 P1 | `[QRY]` | **ListFeaturedProducts** — Produtos em destaque | `catalog.products` |✅✅
+| 57 | 🔴 P0 | `[CMD]` | ✅ **CreateProduct** — Cadastrar produto (DRAFT) | `catalog.products`, `catalog.product_images` |
+| 58 | 🔴 P0 | `[CMD]` | ✅ **UpdateProduct** — Editar dados do produto | `catalog.products` |
+| 59 | 🔴 P0 | `[CMD]` | **PublishProduct** — Status DRAFT → ACTIVE | `catalog.products` |
+| 60 | 🔴 P0 | `[CMD]` | **PauseProduct** — Status ACTIVE → PAUSED | `catalog.products` |
+| 61 | 🔴 P0 | `[CMD]` | **ArchiveProduct** — Soft delete / ARCHIVED | `catalog.products` |
+| 62 | 🔴 P0 | `[QRY]` | ✅ **GetProduct** — Detalhe do produto (público) | `catalog.products`, `catalog.product_images`, `catalog.categories`, `catalog.brands` |
+| 63 | 🔴 P0 | `[QRY]` | ✅ **SearchProducts** — Busca com filtros (nome, categoria, preço, atributos) | `catalog.products` (trigram + GIN) |
+| 64 | 🔴 P0 | `[QRY]` | ✅ **ListProductsByCategory** — Produtos de uma categoria | `catalog.products`, `catalog.categories` |
+| 65 | 🟠 P1 | `[CMD]` | **ManageProductImages** — Upload, reordenar, definir primária | `catalog.product_images` |
+| 66 | 🟠 P1 | `[QRY]` | **ListFeaturedProducts** — Produtos em destaque | `catalog.products` |
 | 67 | 🟠 P1 | `[QRY]` | **ListProductsByBrand** — Produtos filtrados por marca | `catalog.products`, `catalog.brands` |
 | 68 | 🟡 P2 | `[CMD]` | **RestoreProduct** — Reativar produto (ARCHIVED → DRAFT) | `catalog.products` |
 | 69 | 🟡 P2 | `[QRY]` | **ListProductsByTag** — Buscar por tags (GIN index) | `catalog.products` |
@@ -134,11 +134,11 @@ Lista completa de use cases derivados do schema `db.sql`, organizados por módul
 
 | # | Prioridade | Tipo | Use Case | Tabelas envolvidas |
 |---|:---:|:---:|----------|-------------------|
-| 70 | 🔴 P0 | `[CMD]` | **AdjustStock** — Entrada/saída manual de estoque | `catalog.products`, `catalog.stock_movements` |✅
-| 71 | 🔴 P0 | `[CMD]` | **ReserveStock** — Reservar estoque (SELECT FOR UPDATE) | `catalog.products`, `catalog.stock_reservations`, `catalog.stock_movements` |✅
-| 72 | 🔴 P0 | `[CMD]` | **ReleaseStock** — Liberar reserva expirada/cancelada | `catalog.products`, `catalog.stock_reservations`, `catalog.stock_movements` |✅
+| 70 | 🔴 P0 | `[CMD]` | ✅ **AdjustStock** — Entrada/saída manual de estoque | `catalog.products`, `catalog.stock_movements` |
+| 71 | 🔴 P0 | `[CMD]` | **ReserveStock** — Reservar estoque (SELECT FOR UPDATE) | `catalog.products`, `catalog.stock_reservations`, `catalog.stock_movements` |
+| 72 | 🔴 P0 | `[CMD]` | **ReleaseStock** — Liberar reserva expirada/cancelada | `catalog.products`, `catalog.stock_reservations`, `catalog.stock_movements` |
 | 73 | 🔴 P0 | `[CMD]` | **ConfirmStockDeduction** — Deduzir estoque após pagamento | `catalog.products`, `catalog.stock_reservations`, `catalog.stock_movements` |
-| 74 | 🟠 P1 | `[QRY]` | **GetStockMovements** — Histórico de movimentações | `catalog.stock_movements` |
+| 74 | 🟠 P1 | `[QRY]` | ✅ **GetStockMovements** — Histórico de movimentações | `catalog.stock_movements` |
 | 75 | 🟠 P1 | `[QRY]` | **ListLowStockProducts** — Alerta de estoque baixo | `catalog.products` |
 | 76 | 🟡 P2 | `[JOB]` | **CleanupExpiredReservations** — Liberar reservas expiradas | `catalog.stock_reservations`, `catalog.products` |
 
@@ -167,12 +167,12 @@ Lista completa de use cases derivados do schema `db.sql`, organizados por módul
 
 | # | Prioridade | Tipo | Use Case | Tabelas envolvidas |
 |---|:---:|:---:|----------|-------------------|
-| 87 | 🔴 P0 | `[CMD]` | **AddItemToCart** — Adicionar produto ao carrinho | `cart.carts`, `cart.items`, `catalog.products`, `cart.activity_log` |✅
-| 88 | 🔴 P0 | `[CMD]` | **UpdateCartItemQuantity** — Alterar quantidade | `cart.items`, `cart.activity_log` |✅
-| 89 | 🔴 P0 | `[CMD]` | **RemoveItemFromCart** — Soft delete (removed_at) | `cart.items`, `cart.activity_log` |✅
-| 90 | 🔴 P0 | `[QRY]` | **GetCart** — Carrinho completo com preços atuais | `cart.carts`, `cart.items`, `catalog.products` |✅
-| 91 | 🟠 P1 | `[CMD]` | **MergeGuestCart** — Unir carrinho anônimo ao usuário logado. **Estratégia de conflito:** se o mesmo produto existir nos dois carrinhos, somar as quantidades respeitando o estoque disponível; em caso de estoque insuficiente para a soma, usar a maior quantidade viável; o carrinho guest é marcado como `CONVERTED` ao final. | `cart.carts`, `cart.items` |✅
-| 92 | 🟠 P1 | `[CMD]` | **ClearCart** — Esvaziar carrinho | `cart.items` |✅
+| 87 | 🔴 P0 | `[CMD]` | **AddItemToCart** — Adicionar produto ao carrinho | `cart.carts`, `cart.items`, `catalog.products`, `cart.activity_log` |
+| 88 | 🔴 P0 | `[CMD]` | **UpdateCartItemQuantity** — Alterar quantidade | `cart.items`, `cart.activity_log` |
+| 89 | 🔴 P0 | `[CMD]` | **RemoveItemFromCart** — Soft delete (removed_at) | `cart.items`, `cart.activity_log` |
+| 90 | 🔴 P0 | `[QRY]` | **GetCart** — Carrinho completo com preços atuais | `cart.carts`, `cart.items`, `catalog.products` |
+| 91 | 🟠 P1 | `[CMD]` | **MergeGuestCart** — Unir carrinho anônimo ao usuário logado. **Estratégia de conflito:** se o mesmo produto existir nos dois carrinhos, somar as quantidades respeitando o estoque disponível; em caso de estoque insuficiente para a soma, usar a maior quantidade viável; o carrinho guest é marcado como `CONVERTED` ao final. | `cart.carts`, `cart.items` |
+| 92 | 🟠 P1 | `[CMD]` | **ClearCart** — Esvaziar carrinho | `cart.items` |
 | 93 | 🟡 P2 | `[EVT]` | **DetectPriceChange** — Atualizar current_price quando produto mudar | `cart.items` |
 | 94 | 🟡 P2 | `[QRY]` | **GetCartActivityLog** — Consultar log de atividades | `cart.activity_log` |
 

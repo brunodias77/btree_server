@@ -139,8 +139,8 @@ class CreateProductUseCaseTest extends UseCaseTest {
             mockUniquenessChecks();
             when(productGateway.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
             final var images = List.of(
-                    new CreateProductCommand.ImageEntry("https://cdn.example.com/img1.jpg", "alt 1", 0, true),
-                    new CreateProductCommand.ImageEntry("https://cdn.example.com/img2.jpg", "alt 2", 1, false)
+                    new CreateProductCommand.ImageEntry("https://cdn.example.com/img1.jpg", "alt 1"),
+                    new CreateProductCommand.ImageEntry("https://cdn.example.com/img2.jpg", "alt 2")
             );
 
             final var cmd = commandWithImages(images);

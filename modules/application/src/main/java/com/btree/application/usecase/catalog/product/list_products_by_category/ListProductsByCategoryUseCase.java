@@ -45,10 +45,10 @@ public class ListProductsByCategoryUseCase
 
         // 1. Validar existência da categoria (pré-condição — fora do Either)
         final var category = categoryGateway.findById(CategoryId.from(command.categoryId()))
-                .orElseThrow(() -> NotFoundException.with(CategoryError.CATEGORY_NOT_FOUND));
+                .orElseThrow(() -> NotFoundException.with(CategoryError.CATEGORY_NOT_FOUND.message()));
 
         if (category.isDeleted()) {
-            throw NotFoundException.with(CategoryError.CATEGORY_NOT_FOUND);
+            throw NotFoundException.with(CategoryError.CATEGORY_NOT_FOUND.message());
         }
 
         // 2. Buscar produtos ACTIVE da categoria com paginação
