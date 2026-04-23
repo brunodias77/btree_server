@@ -3,7 +3,6 @@ package com.btree.application.usecase.catalog.product.list_products_by_category;
 import com.btree.application.usecase.UseCaseTest;
 import com.btree.domain.catalog.entity.Category;
 import com.btree.domain.catalog.entity.Product;
-import com.btree.domain.catalog.error.CategoryError;
 import com.btree.domain.catalog.gateway.CategoryGateway;
 import com.btree.domain.catalog.gateway.ProductGateway;
 import com.btree.domain.catalog.identifier.CategoryId;
@@ -56,17 +55,10 @@ class ListProductsByCategoryUseCaseTest extends UseCaseTest {
         @Test
         @DisplayName("Deve retornar página de produtos quando categoria existir e não estiver deletada")
         void givenValidCategory_whenExecute_thenReturnPaginatedProducts() {
-            final var category = activeCategory();
-            final var product  = activeProduct();
-            @SuppressWarnings("unchecked")
-            final Pagination<Product> page = mock(Pagination.class);
-            when(page.items()).thenReturn(List.of(product));
-            when(page.currentPage()).thenReturn(0);
-            when(page.perPage()).thenReturn(10);
-            when(page.total()).thenReturn(1L);
-            when(page.totalPages()).thenReturn(1);
+            final var product = activeProduct();
+            final Pagination<Product> page = Pagination.of(List.of(product), 0, 10, 1L);
 
-            when(categoryGateway.findById(CategoryId.from(CATEGORY_ID))).thenReturn(Optional.of(category));
+            when(categoryGateway.findById(CategoryId.from(CATEGORY_ID))).thenReturn(Optional.of(activeCategory()));
             when(productGateway.findActiveByCategoryId(any(CategoryId.class), any(PageRequest.class)))
                     .thenReturn(page);
 
@@ -84,13 +76,7 @@ class ListProductsByCategoryUseCaseTest extends UseCaseTest {
         @Test
         @DisplayName("Deve retornar página vazia quando nenhum produto ativo existir na categoria")
         void givenCategoryWithNoActiveProducts_whenExecute_thenReturnEmptyPage() {
-            @SuppressWarnings("unchecked")
-            final Pagination<Product> emptyPage = mock(Pagination.class);
-            when(emptyPage.items()).thenReturn(List.of());
-            when(emptyPage.currentPage()).thenReturn(0);
-            when(emptyPage.perPage()).thenReturn(10);
-            when(emptyPage.total()).thenReturn(0L);
-            when(emptyPage.totalPages()).thenReturn(0);
+            final Pagination<Product> emptyPage = Pagination.of(List.of(), 0, 10, 0L);
 
             when(categoryGateway.findById(CategoryId.from(CATEGORY_ID))).thenReturn(Optional.of(activeCategory()));
             when(productGateway.findActiveByCategoryId(any(CategoryId.class), any(PageRequest.class)))
@@ -106,13 +92,7 @@ class ListProductsByCategoryUseCaseTest extends UseCaseTest {
         @Test
         @DisplayName("Deve passar page e size corretos ao gateway")
         void givenPageAndSize_whenExecute_thenDelegateToGatewayWithCorrectPagination() {
-            @SuppressWarnings("unchecked")
-            final Pagination<Product> page = mock(Pagination.class);
-            when(page.items()).thenReturn(List.of());
-            when(page.currentPage()).thenReturn(2);
-            when(page.perPage()).thenReturn(20);
-            when(page.total()).thenReturn(0L);
-            when(page.totalPages()).thenReturn(0);
+            final Pagination<Product> page = Pagination.of(List.of(), 2, 20, 0L);
 
             when(categoryGateway.findById(CategoryId.from(CATEGORY_ID))).thenReturn(Optional.of(activeCategory()));
             when(productGateway.findActiveByCategoryId(any(CategoryId.class), any(PageRequest.class)))
@@ -128,13 +108,7 @@ class ListProductsByCategoryUseCaseTest extends UseCaseTest {
         @DisplayName("Deve mapear primaryImageUrl do produto no output")
         void givenProductWithNoPrimaryImage_whenExecute_thenPrimaryImageUrlIsNull() {
             final var product = activeProduct(); // produto sem imagens
-            @SuppressWarnings("unchecked")
-            final Pagination<Product> page = mock(Pagination.class);
-            when(page.items()).thenReturn(List.of(product));
-            when(page.currentPage()).thenReturn(0);
-            when(page.perPage()).thenReturn(10);
-            when(page.total()).thenReturn(1L);
-            when(page.totalPages()).thenReturn(1);
+            final Pagination<Product> page = Pagination.of(List.of(product), 0, 10, 1L);
 
             when(categoryGateway.findById(CategoryId.from(CATEGORY_ID))).thenReturn(Optional.of(activeCategory()));
             when(productGateway.findActiveByCategoryId(any(CategoryId.class), any(PageRequest.class)))
@@ -189,16 +163,34 @@ class ListProductsByCategoryUseCaseTest extends UseCaseTest {
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
+    /** Categoria ativa usando o factory `with(...)` — sem mock de categoria. */
     private Category activeCategory() {
-        final var category = mock(Category.class);
-        when(category.isDeleted()).thenReturn(false);
-        return category;
+        final var now = Instant.now();
+        return Category.with(
+                CategoryId.from(CATEGORY_ID),
+                null,
+                "Moda Feminina",
+                "moda-feminina",
+                "Roupas femininas",
+                null,
+                0, true,
+                now, now, null
+        );
     }
 
+    /** Categoria soft-deletada usando o factory `with(...)`. */
     private Category deletedCategory() {
-        final var category = mock(Category.class);
-        when(category.isDeleted()).thenReturn(true);
-        return category;
+        final var now = Instant.now();
+        return Category.with(
+                CategoryId.from(CATEGORY_ID),
+                null,
+                "Moda Feminina",
+                "moda-feminina",
+                "Roupas femininas",
+                null,
+                0, false,
+                now, now, now   // deletedAt != null
+        );
     }
 
     private Product activeProduct() {

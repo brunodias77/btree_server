@@ -45,6 +45,10 @@ public class UpdateBrandUseCase implements UseCase<UpdateBrandCommand, UpdateBra
         // Resolver e validar o ID da marca
         final BrandId brandId;
         try {
+            if (updateBrandCommand.brandId() == null) {
+                notification.append(BrandError.BRAND_NOT_FOUND);
+                return Left(notification);
+            }
             brandId = BrandId.from(UUID.fromString(updateBrandCommand.brandId()));
         } catch (IllegalArgumentException e) {
             notification.append(BrandError.BRAND_NOT_FOUND);

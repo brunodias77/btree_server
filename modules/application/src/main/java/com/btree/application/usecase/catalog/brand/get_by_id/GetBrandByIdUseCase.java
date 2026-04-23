@@ -23,8 +23,8 @@ public class GetBrandByIdUseCase implements UseCase<GetBrandByIdCommand, GetBran
     public Either<Notification, GetBrandByIdOutput> execute(GetBrandByIdCommand command) {
         var notification = Notification.create();
 
-        // validar se o brandid esta vazio ou null
-        if(command.brandId().isBlank() || command.brandId() == null){
+        // validar se o brandId está vazio ou null
+        if(command.brandId() == null || command.brandId().isBlank()){
             notification.append(BrandError.BRAND_NOT_FOUND);
             return Left(notification);
         }
