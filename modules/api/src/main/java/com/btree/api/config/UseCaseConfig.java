@@ -42,6 +42,7 @@ import com.btree.application.usecase.user.get_current_user.GetCurrentUserUseCase
 import com.btree.application.usecase.user.get_profile.GetProfileUseCase;
 import com.btree.application.usecase.user.update_profile.UpdateProfileUseCase;
 import com.btree.domain.catalog.gateway.BrandGateway;
+import com.btree.domain.catalog.gateway.CategoryGateway;
 import com.btree.domain.user.gateway.*;
 import com.btree.infrastructure.config.JwtConfig;
 import com.btree.shared.contract.*;
@@ -51,7 +52,6 @@ import com.btree.shared.gateway.OutboxEventGateway;
 import com.btree.shared.gateway.ProcessedEventGateway;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import com.btree.domain.catalog.gateway;
 /**
  * Registra todos os Use Cases da aplicação como beans Spring.
  *
