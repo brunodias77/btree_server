@@ -24,12 +24,6 @@
             <artifactId>domain</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
-        <dependency>
-            <groupId>com.btree.infrastructure</groupId>
-            <artifactId>infrastructure</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-        </dependency>
-
         <!-- Logging (facade only — sem dependência de framework) -->
         <dependency>
             <groupId>org.slf4j</groupId>

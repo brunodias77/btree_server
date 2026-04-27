@@ -1,5 +1,6 @@
 package com.btree.api.config;
 
+import com.btree.application.usecase.cart.create_for_user.CreateCartForUserUseCase;
 import com.btree.application.usecase.cart.get_by_id.GetCartByIdUseCase;
 import com.btree.application.usecase.catalog.brand.create.CreateBrandUseCase;
 import com.btree.application.usecase.catalog.brand.get_by_id.GetBrandByIdUseCase;
@@ -451,6 +452,14 @@ public class UseCaseConfig {
     @Bean
     public GetCartByIdUseCase getCartByIdUseCase(final CartGateway cartGateway, final ProductGateway productGateway) {
         return new GetCartByIdUseCase(cartGateway, productGateway);
+    }
+
+    @Bean
+    public CreateCartForUserUseCase createCartForUserUseCase(
+            final CartGateway cartGateway,
+            final DomainEventPublisher eventPublisher
+    ) {
+        return new CreateCartForUserUseCase(cartGateway, eventPublisher);
     }
 
 //    @Bean
