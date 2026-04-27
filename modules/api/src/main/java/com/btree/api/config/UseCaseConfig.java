@@ -16,7 +16,6 @@ import com.btree.application.usecase.catalog.product.list_all.ListAllProductsUse
 import com.btree.application.usecase.catalog.product.list_products_by_category.ListProductsByCategoryUseCase;
 import com.btree.application.usecase.catalog.product.update.UpdateProductUseCase;
 import com.btree.application.usecase.media.upload.UploadFileUseCase;
-import com.btree.domain.catalog.gateway.CategoryGateway;
 import com.btree.domain.catalog.gateway.ProductGateway;
 import com.btree.domain.catalog.gateway.StockMovementGateway;
 import com.btree.shared.contract.FileStorageService;
@@ -52,7 +51,7 @@ import com.btree.shared.gateway.OutboxEventGateway;
 import com.btree.shared.gateway.ProcessedEventGateway;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
+import com.btree.domain.catalog.gateway;
 /**
  * Registra todos os Use Cases da aplicação como beans Spring.
  *
