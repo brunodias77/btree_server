@@ -88,7 +88,7 @@ public class ProductJpaEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, columnDefinition = "shared.product_status")
-    @ColumnTransformer(write = "?::shared.product_status")
+    @ColumnTransformer(read = "CAST(status AS character varying)", write = "?::shared.product_status")
     private ProductStatus status;
 
     @Column(name = "featured", nullable = false)

@@ -1,5 +1,6 @@
 package com.btree.api.config;
 
+import com.btree.application.usecase.cart.get_by_id.GetCartByIdUseCase;
 import com.btree.application.usecase.catalog.brand.create.CreateBrandUseCase;
 import com.btree.application.usecase.catalog.brand.get_by_id.GetBrandByIdUseCase;
 import com.btree.application.usecase.catalog.brand.list_all.ListAllBrandUseCase;
@@ -16,6 +17,7 @@ import com.btree.application.usecase.catalog.product.list_all.ListAllProductsUse
 import com.btree.application.usecase.catalog.product.list_products_by_category.ListProductsByCategoryUseCase;
 import com.btree.application.usecase.catalog.product.update.UpdateProductUseCase;
 import com.btree.application.usecase.media.upload.UploadFileUseCase;
+import com.btree.domain.cart.gateway.CartGateway;
 import com.btree.domain.catalog.gateway.ProductGateway;
 import com.btree.domain.catalog.gateway.StockMovementGateway;
 import com.btree.shared.contract.FileStorageService;
@@ -446,7 +448,10 @@ public class UseCaseConfig {
         return new GetCategoryUseCase(categoryGateway);
     }
 
-
+    @Bean
+    public GetCartByIdUseCase getCartByIdUseCase(final CartGateway cartGateway, final ProductGateway productGateway) {
+        return new GetCartByIdUseCase(cartGateway, productGateway);
+    }
 
 //    @Bean
 //    public LogoutAllSessionsUseCase logoutAllSessionsUseCase(

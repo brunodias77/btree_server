@@ -14,6 +14,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import org.hibernate.annotations.ColumnTransformer;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -40,6 +41,7 @@ public class CartJpaEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, columnDefinition = "shared.cart_status")
+    @ColumnTransformer(read = "CAST(status AS character varying)", write = "?::shared.cart_status")
     private CartStatus status;
 
     @Column(name = "coupon_code", length = 50)
@@ -47,6 +49,7 @@ public class CartJpaEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "shipping_method", columnDefinition = "shared.shipping_method")
+    @ColumnTransformer(read = "CAST(shipping_method AS character varying)", write = "?::shared.shipping_method")
     private ShippingMethod shippingMethod;
 
     @Column(name = "notes", columnDefinition = "TEXT")

@@ -44,7 +44,7 @@ public class StockMovementJpaEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "movement_type", nullable = false, columnDefinition = "shared.stock_movement_type")
-    @ColumnTransformer(write = "?::shared.stock_movement_type")
+    @ColumnTransformer(read = "CAST(movement_type AS character varying)", write = "?::shared.stock_movement_type")
     private StockMovementType movementType;
 
     @Column(name = "quantity", nullable = false)
